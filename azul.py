@@ -42,12 +42,12 @@ class Azul:
     FloorSize = 7
 
     def __init__(self, bagCount: Optional[np.ndarray] = None, bins: Optional[np.ndarray] = None,
-                 pool: Optional[np.ndarray] = None, playerStates: Optional[List[PlayerState]] = None,
+                 playerStates: Optional[List[PlayerState]] = None,
                  isNextPLayerA: Optional[bool] = None, poolWasTouched: Optional[bool] = None):
         self.bagCount = bagCount or np.repeat(20, Azul.ColorNumber)
-        # Bins and pool store the count indexed by the Color enum. The 'empty' color is always at zero.
-        self.bins = bins or np.zeros((Azul.BinNumber, Azul.ColorNumber + 1), dtype=np.uint8)
-        self.pool = pool or np.zeros(Azul.ColorNumber + 1, dtype=np.uint8)
+        # Bins store the count indexed by the Color enum. The 'empty' color is always at zero.
+        # The last bin is the 'pool'.
+        self.bins = bins or np.zeros((Azul.BinNumber + 1, Azul.ColorNumber + 1), dtype=np.uint8)
 
         self.playerStates = playerStates or [PlayerState() for _ in range(Azul.PlayerNumber)]
 
@@ -62,11 +62,11 @@ class Azul:
         return False
 
     def is_end_of_round(self) -> bool:
-        return np.all(self.bins == 0) and np.all(self.pool == 0)
+        return np.all(self.bins == 0)
 
     def enumerate_moves(self):
         player = self.playerStates[0] if self.isNextPlayerA else self.playerStates[1]
-        for iSource, source in enumerate(itertools.chain(self.bins, (self.pool, ))):
+        for iSource, source in enumerate(self.bins):
             for color, count in enumerate(source):
                 if count == 0 or color == Color.Empty:
                     continue

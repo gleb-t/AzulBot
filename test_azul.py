@@ -35,7 +35,7 @@ class TestAzul(unittest.TestCase):
         assert_moves_match(expectedSources, expectedTargets)
 
         # Now put something in the pool, we should get extra moves.
-        azul.pool[Color.Yellow] = 1
+        azul.bins[Azul.BinNumber, Color.Yellow] = 1
         expectedSources.append((Azul.BinNumber, Color.Yellow, 1))
 
         assert_moves_match(expectedSources, expectedTargets)
