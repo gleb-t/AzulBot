@@ -52,14 +52,14 @@ class Azul:
         self.isNextPlayerA = isNextPLayerA if isNextPLayerA is not None else True
         self.poolWasTouched = poolWasTouched if poolWasTouched is not None else False
 
-    def is_end_of_game(self):
+    def is_end_of_game(self) -> bool:
         for player in self.playerStates:
             if np.any(np.count_nonzero(player.wall, axis=0) == 0):
                 return True
 
         return False
 
-    def is_end_of_round(self):
+    def is_end_of_round(self) -> bool:
         return np.all(self.bins == Color.empty) and np.all(self.pool == Color.empty)
 
     def enumerate_moves(self):
@@ -81,8 +81,9 @@ class Azul:
                         yield Move(iSource, iTarget, color, count)
 
                 # It's always valid to put the tiles on the floor.
-                yield Move(iSource, Azul.WallShape[0] + 1, color=color, count=count)
+                yield Move(iSource, Azul.WallShape[0], color=color, count=count)
 
-
-
-
+    @staticmethod
+    def get_wall_slot_color(index: Tuple[int, int]) -> Color:
+        # This generates the diagonal pattern on the playing board.
+        return Color((index[1] - index[0]) % Azul.ColorNumber + 1)
