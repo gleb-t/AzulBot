@@ -1,6 +1,8 @@
 import itertools
 import unittest
 
+import numpy as np
+
 from azul import Azul, Color, Move
 
 
@@ -16,8 +18,8 @@ class TestAzul(unittest.TestCase):
 
         azul.bins[1][Color.White] = 4
 
-        expectedSources = [(0, Color.Red, 2), (0, Color.Blue, 1), (0, Color.Black, 1),
-                           (1, Color.White, 4)]
+        expectedSources = [(0, Color.Red), (0, Color.Blue), (0, Color.Black),
+                           (1, Color.White)]
         targetNumber = Azul.WallShape[0] + 1
         expectedTargets = range(targetNumber)
 
@@ -26,7 +28,7 @@ class TestAzul(unittest.TestCase):
             output = list(azul.enumerate_moves())
             sourceTargetProduct = list(itertools.product(sources, targets))
             for expSource, expTarget in sourceTargetProduct:
-                move = Move(expSource[0], expTarget, expSource[1], expSource[2])
+                move = Move(expSource[0], expTarget, expSource[1])
                 if move not in exclude:
                     self.assertIn(move, output)
 
@@ -36,19 +38,83 @@ class TestAzul(unittest.TestCase):
 
         # Now put something in the pool, we should get extra moves.
         azul.bins[Azul.BinNumber, Color.Yellow] = 1
-        expectedSources.append((Azul.BinNumber, Color.Yellow, 1))
+        expectedSources.append((Azul.BinNumber, Color.Yellow))
 
         assert_moves_match(expectedSources, expectedTargets)
 
         # Fill up one of the queues, some moves should become invalid.
-        azul.playerStates[0].queue[0] = (Color.White, 1)
+        azul.players[0].queue[0] = (Color.White, 1)
         expectedTargets = range(1, targetNumber)
 
         assert_moves_match(expectedSources, expectedTargets)
 
         # Block a row of the wall, adding more invalid moves.
-        azul.playerStates[0].wall[1, 0] = Azul.get_wall_slot_color((1, 0))
+        azul.players[0].wall[1, 0] = Azul.get_wall_slot_color((1, 0))
         expectedTargets = range(1, targetNumber)
 
-        assert_moves_match(expectedSources, expectedTargets, exclude=[Move(1, 1, Color.White, 4)])
+        assert_moves_match(expectedSources, expectedTargets, exclude=[Move(1, 1, Color.White)])
+
+    def test_apply_move_basic(self):
+        # This case is taken from the rulebook.
+        azul = Azul()
+
+        azul.bins[0, Color.Yellow] = 1
+        azul.bins[0, Color.Black] = 2
+        azul.bins[0, Color.White] = 1
+
+        azul.bins[1, Color.Yellow] = 1
+        azul.bins[1, Color.Red] = 3
+
+        azul.firstPlayer = 1  # We will change it and check later.
+
+        azul = azul.apply_move(Move(0, 1, Color.Black))
+
+        # The pool should hold the leftovers.
+        np.testing.assert_equal(azul.bins[-1], [0, 0, 1, 0, 0, 1])  # See 'Color'.
+
+        # The queue should only hold black.
+        np.testing.assert_equal(azul.players[0].queue[1], [Color.Black, 2])
+        for i, q in enumerate(azul.players[0].queue):
+            if i != 1:
+                np.testing.assert_equal(q, [0, 0])
+
+        # Nothing should be on the floor.
+        self.assertEqual(azul.players[0].floorCount, 0)
+        # The wall shouldn't be affected.
+        self.assertEqual(np.count_nonzero(azul.players[0].wall), 0)
+        # Player two shouldn't be affected.
+        self.assertEqual(np.count_nonzero(azul.players[1].queue), 0)
+        # Next player is tobe updated.
+        self.assertEqual(azul.nextPlayer, 1)
+
+        # Make a few more moves.
+        azul = azul.apply_move(Move(1, 2, Color.Yellow))
+        azul = azul.apply_move(Move(Azul.BinNumber, 3, Color.Red))
+
+        # Check the pool.
+        np.testing.assert_equal(azul.bins[-1], [0, 0, 1, 0, 0, 1])
+        self.assertEqual(azul.poolWasTouched, True)
+        # Check the first player queues.
+        np.testing.assert_equal(azul.players[0].queue[1], [Color.Black, 2])
+        np.testing.assert_equal(azul.players[0].queue[3], [Color.Red, 3])
+        for i, q in enumerate(azul.players[0].queue):
+            if i != 1 and i != 3:
+                np.testing.assert_equal(q, [0, 0])
+
+        # Check the second player queues.
+        np.testing.assert_equal(azul.players[1].queue[2], [Color.Yellow, 1])
+        for i, q in enumerate(azul.players[1].queue):
+            if i != 2:
+                np.testing.assert_equal(q, [0, 0])
+
+        # Check the floors.
+        self.assertEqual(azul.players[0].floorCount, 1)
+        self.assertEqual(azul.players[1].floorCount, 0)
+        # The wall shouldn't be affected.
+        self.assertEqual(np.count_nonzero(azul.players[0].wall), 0)
+        self.assertEqual(np.count_nonzero(azul.players[1].wall), 0)
+        # Check the next player.
+        self.assertEqual(azul.nextPlayer, 1)
+        # Check who goes first next round.
+        self.assertEqual(azul.firstPlayer, 0)
 
