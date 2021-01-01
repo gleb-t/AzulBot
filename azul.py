@@ -1,4 +1,5 @@
 import itertools
+from copy import deepcopy
 from enum import IntEnum
 from typing import *
 
@@ -24,10 +25,10 @@ class Move(NamedTuple):
 class PlayerState:
 
     def __init__(self, wall: Optional[np.ndarray] = None, queue: Optional[np.ndarray] = None,
-                 floor: Optional[np.ndarray] = None, score: Optional[int] = None):
+                 floorCount: Optional[int] = None, score: Optional[int] = None):
         self.wall = wall or np.zeros(Azul.WallShape, dtype=np.uint8)
-        self.queue = queue or np.zeros(Azul.WallShape, dtype=np.uint8)
-        self.floor = floor or np.zeros(Azul.FloorSize, dtype=np.uint8)
+        self.queue = queue or np.zeros((Azul.WallShape[0], 2), dtype=np.uint8)  # Stores color and count per row.
+        self.floorCount = floorCount or 0
 
         self.score = score if score is not None else 0
 
@@ -36,6 +37,7 @@ class Azul:
     ColorNumber = 5
     PlayerNumber = 2
     BinNumber = 5
+    BinSize = 4
     WallShape = (5, 5)
     FloorSize = 7
 
@@ -43,9 +45,9 @@ class Azul:
                  pool: Optional[np.ndarray] = None, playerStates: Optional[List[PlayerState]] = None,
                  isNextPLayerA: Optional[bool] = None, poolWasTouched: Optional[bool] = None):
         self.bagCount = bagCount or np.repeat(20, Azul.ColorNumber)
-        self.bins = bins or np.zeros((Azul.BinNumber, 4), dtype=np.uint8)
-        # self.binEmptyFlags = np.array((np.all(b == Color.empty) for b in self.bins), dtype=np.bool)
-        self.pool = pool or np.zeros(20, dtype=np.uint8)
+        # Bins and pool store the count indexed by the Color enum. The 'empty' color is always at zero.
+        self.bins = bins or np.zeros((Azul.BinNumber, Azul.ColorNumber + 1), dtype=np.uint8)
+        self.pool = pool or np.zeros(Azul.ColorNumber + 1, dtype=np.uint8)
 
         self.playerStates = playerStates or [PlayerState() for _ in range(Azul.PlayerNumber)]
 
@@ -60,22 +62,21 @@ class Azul:
         return False
 
     def is_end_of_round(self) -> bool:
-        return np.all(self.bins == Color.empty) and np.all(self.pool == Color.empty)
+        return np.all(self.bins == 0) and np.all(self.pool == 0)
 
     def enumerate_moves(self):
         player = self.playerStates[0] if self.isNextPlayerA else self.playerStates[1]
         for iSource, source in enumerate(itertools.chain(self.bins, (self.pool, ))):
-            # BLAH = np.unique(source, return_counts=True) # todo
-            for color, count in zip(*np.unique(source, return_counts=True)):
-                if color == Color.Empty:
+            for color, count in enumerate(source):
+                if count == 0 or color == Color.Empty:
                     continue
 
                 for iTarget, (targetQueue, targetRow) in enumerate(zip(player.queue, player.wall)):
                     # If the color isn't already on the wall in that row,
-                    # and the queue has space (last element is empty),
+                    # and the queue has space (its size is index+1),
                     # and the queue is completely empty (first element empty) or contains the same color.
                     if color not in targetRow and \
-                            targetQueue[iTarget] == Color.Empty and \
+                            targetQueue[1] < iTarget + 1 and \
                             (targetQueue[0] == Color.Empty or targetQueue[0] == color):
 
                         yield Move(iSource, iTarget, color, count)

@@ -10,15 +10,11 @@ class TestAzul(unittest.TestCase):
         # Init an empty board, and init with a few tiles.
         azul = Azul()
 
-        azul.bins[0][0] = Color.Red
-        azul.bins[0][1] = Color.Red
-        azul.bins[0][2] = Color.Blue
-        azul.bins[0][3] = Color.Black
+        azul.bins[0][Color.Red] = 2
+        azul.bins[0][Color.Blue] = 1
+        azul.bins[0][Color.Black] = 1
 
-        azul.bins[1][0] = Color.White
-        azul.bins[1][1] = Color.White
-        azul.bins[1][2] = Color.White
-        azul.bins[1][3] = Color.White
+        azul.bins[1][Color.White] = 4
 
         expectedSources = [(0, Color.Red, 2), (0, Color.Blue, 1), (0, Color.Black, 1),
                            (1, Color.White, 4)]
@@ -39,13 +35,13 @@ class TestAzul(unittest.TestCase):
         assert_moves_match(expectedSources, expectedTargets)
 
         # Now put something in the pool, we should get extra moves.
-        azul.pool[0] = Color.Yellow
+        azul.pool[Color.Yellow] = 1
         expectedSources.append((Azul.BinNumber, Color.Yellow, 1))
 
         assert_moves_match(expectedSources, expectedTargets)
 
         # Fill up one of the queues, some moves should become invalid.
-        azul.playerStates[0].queue[0, 0] = Color.White
+        azul.playerStates[0].queue[0] = (Color.White, 1)
         expectedTargets = range(1, targetNumber)
 
         assert_moves_match(expectedSources, expectedTargets)
