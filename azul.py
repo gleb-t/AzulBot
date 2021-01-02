@@ -69,7 +69,7 @@ class Azul:
 
     def is_end_of_game(self) -> bool:
         for player in self.players:
-            if np.any(np.count_nonzero(player.wall, axis=0) == 0):
+            if np.any(np.count_nonzero(player.wall, axis=1) == Azul.WallShape[1]):
                 return True
 
         return False
@@ -141,15 +141,6 @@ class Azul:
         if not self.is_end_of_round():
             raise RuntimeError("Not allowed to score the round before it has ended.")
 
-        self._score_round()
-
-    def deal_round(self):
-        if not self.is_end_of_round():
-            raise RuntimeError("Not allowed to deal a new round before the old has ended.")
-
-        self._deal_round()
-
-    def _score_round(self):
         for player in self.players:
             for iRow, q in enumerate(player.queue):
                 color, count = q[0], q[1]
@@ -165,12 +156,15 @@ class Azul:
 
             player.floorCount = 0
 
-    def _deal_round(self):
-        assert np.all(self.bins == 0)
+    def deal_round(self):
+        if not self.is_end_of_round():
+            raise RuntimeError("Not allowed to deal a new round before the old has ended.")
 
         sampleSize = Azul.BinNumber * Azul.BinSize
-        if sum(self.bag) < sampleSize:
-            raise NotImplementedError()  # todo
+        bagCount = sum(self.bag)
+        if bagCount < sampleSize:
+            assert Azul.PlayerNumber == 2 and bagCount == 0  # The bag can't have leftovers in a two-player game.
+            self._refill_bag()
 
         # sample = random.sample(Color, counts=self.bag, k=sampleSize)  # Sadly, only works in Python 3.9
         population = np.repeat(Color, repeats=self.bag)
@@ -187,6 +181,22 @@ class Azul:
 
         self.poolWasTouched = False
         self.nextPlayer = self.firstPlayer
+
+    def _refill_bag(self):
+        # First, count all the tiles that lie on the board, they won't be redrawn.
+        missingTiles = np.zeros(Azul.ColorNumber + 1)
+        for player in self.players:
+            for color, count in player.queue:
+                missingTiles[color] += count
+
+            for color, count in zip(*np.unique(player.wall, return_counts=True)):
+                missingTiles[color] += count
+
+        for color in Color:
+            if color != Color.Empty:
+                self.bag[color] = Azul.TileNumber - missingTiles[color]
+
+        assert self.bag[Color.Empty] == 0
 
     @staticmethod
     def get_tile_score(wall: np.ndarray, iRow: int, iCol: int) -> int:

@@ -186,5 +186,40 @@ class TestAzul(unittest.TestCase):
         self.assertEqual(np.sum(azul.bins[:, Color.Blue]), Azul.TileNumber)
         np.testing.assert_equal(azul.bag, 0)
 
+    def test_refill_bag(self):
+        azul = Azul()
+
+        azul.players[0].wall[0] = [Color.Blue, Color.Yellow, Color.Red, Color.Empty, Color.Empty]
+        azul.players[0].wall[1] = [Color.Empty, Color.Blue, Color.Empty, Color.Empty, Color.Empty]
+        azul.players[1].queue[3] = [Color.Black, 2]
+
+        azul._refill_bag()
+
+        np.testing.assert_equal(azul.bag, [0, Azul.TileNumber - 2, Azul.TileNumber - 1,
+                                           Azul.TileNumber - 1, Azul.TileNumber - 2, Azul.TileNumber])
+
+    def test_dealing_round_refills_bag(self):
+
+        azul = Azul()
+        azul.bag[...] = 0
+
+        azul.deal_round()
+
+        self.assertEqual(np.sum(azul.bag), Azul.ColorNumber * Azul.TileNumber - Azul.BinNumber * Azul.BinSize)
+
+    def test_is_end_of_game(self):
+        azul = Azul()
+
+        self.assertFalse(azul.is_end_of_game())
+
+        azul.players[0].wall[4] = [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Empty]
+        self.assertFalse(azul.is_end_of_game())
+
+        azul.players[0].wall[:, 0] = [Color.Blue, Color.White, Color.Black, Color.Red, Color.Yellow]
+        self.assertFalse(azul.is_end_of_game())
+
+        azul.players[1].wall[4] = [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Blue]
+        self.assertTrue(azul.is_end_of_game())
+
 
 
