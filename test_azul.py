@@ -54,7 +54,7 @@ class TestAzul(unittest.TestCase):
 
         assert_moves_match(expectedSources, expectedTargets, exclude=[Move(1, 1, Color.White)])
 
-    def test_apply_move_basic(self):
+    def test_apply_move_sequence(self):
         # This case is taken from the rulebook.
         azul = Azul()
 
@@ -137,7 +137,7 @@ class TestAzul(unittest.TestCase):
         azul.players[1].queue[3] = (Color.White, 4)   # Scores 10
         azul.players[1].floorCount = 1
 
-        azul.score_round_and_deal()
+        azul.score_round()
 
         self.assertEqual(azul.players[0].score, 7)
         self.assertEqual(azul.players[1].score, 11)
@@ -150,3 +150,41 @@ class TestAzul(unittest.TestCase):
 
         self.assertEqual(azul.players[0].floorCount, 0)
         self.assertEqual(azul.players[1].floorCount, 0)
+
+    def test_deal_round_basic(self):
+        azul = Azul()
+
+        azul.firstPlayer = 1
+        azul.poolWasTouched = True
+
+        azul.deal_round()
+
+        self.assertEqual(azul.nextPlayer, 1)
+        self.assertEqual(azul.poolWasTouched, False)
+
+        for b in azul.bins[:-1]:
+            self.assertEqual(sum(b), Azul.BinSize)
+            self.assertEqual(b[Color.Empty], 0)
+
+        np.testing.assert_equal(azul.bins[-1], Color.Empty)
+
+        # Check that the total number of each color's tiles in all the bins
+        # is exactly what's missing from the bag.
+        for color, count in enumerate(np.sum(azul.bins, axis=0)):
+            if color == Color.Empty:
+                self.assertEqual(azul.bag[color], 0)
+            else:
+                self.assertEqual(azul.bag[color], Azul.TileNumber - count)
+
+    def test_deal_round_one_color_left(self):
+        bag = np.zeros(Azul.ColorNumber + 1, dtype=np.uint8)
+        bag[Color.Blue] = Azul.TileNumber
+        azul = Azul(bag=bag)
+
+        azul.deal_round()
+
+        self.assertEqual(np.sum(azul.bins[:, Color.Blue]), Azul.TileNumber)
+        np.testing.assert_equal(azul.bag, 0)
+
+
+

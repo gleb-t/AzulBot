@@ -1,9 +1,14 @@
 import itertools
+import random
 from copy import deepcopy
 from enum import IntEnum
 from typing import *
 
 import numpy as np
+
+
+def _arg_def(value, default):
+    return value if value is not None else default
 
 
 class Color(IntEnum):
@@ -25,15 +30,17 @@ class PlayerState:
 
     def __init__(self, wall: Optional[np.ndarray] = None, queue: Optional[np.ndarray] = None,
                  floorCount: Optional[int] = None, score: Optional[int] = None):
-        self.wall = wall or np.zeros(Azul.WallShape, dtype=np.uint8)
-        self.queue = queue or np.zeros((Azul.WallShape[0], 2), dtype=np.uint8)  # Stores color and count per row.
-        self.floorCount = floorCount or 0
+        self.wall = _arg_def(wall, np.zeros(Azul.WallShape, dtype=np.uint8))
+        # Stores color and count per row.
+        self.queue = _arg_def(queue, np.zeros((Azul.WallShape[0], 2), dtype=np.uint8))
+        self.floorCount = _arg_def(floorCount, 0)
 
-        self.score = score if score is not None else 0
+        self.score = _arg_def(score, 0)
 
 
 class Azul:
     ColorNumber = 5
+    TileNumber = 20
     PlayerNumber = 2
     BinNumber = 5
     BinSize = 4
@@ -42,23 +49,23 @@ class Azul:
     FloorScores = np.array([1, 1, 2, 2, 2, 3, 3], dtype=np.uint8)
 
     def __init__(self,
-                 bagCount: Optional[np.ndarray] = None,
+                 bag: Optional[np.ndarray] = None,
                  bins: Optional[np.ndarray] = None,
                  playerStates: Optional[List[PlayerState]] = None,
                  nextPlayer: Optional[int] = None,
                  firstPlayer: Optional[int] = None,
                  poolWasTouched: Optional[bool] = None):
 
-        self.bagCount = bagCount or np.repeat(20, Azul.ColorNumber + 1)
+        self.bag = _arg_def(bag, np.concatenate(([0], np.repeat(Azul.TileNumber, Azul.ColorNumber))))
         # Bins store the count indexed by the Color enum. The 'empty' color is always at zero.
         # The last bin is the 'pool'.
-        self.bins = bins or np.zeros((Azul.BinNumber + 1, Azul.ColorNumber + 1), dtype=np.uint8)
+        self.bins = _arg_def(bins, np.zeros((Azul.BinNumber + 1, Azul.ColorNumber + 1), dtype=np.uint8))
 
-        self.players = playerStates or [PlayerState() for _ in range(Azul.PlayerNumber)]
+        self.players = _arg_def(playerStates, [PlayerState() for _ in range(Azul.PlayerNumber)])
 
-        self.nextPlayer = nextPlayer if nextPlayer is not None else 0
-        self.firstPlayer = firstPlayer if firstPlayer is not None else 0
-        self.poolWasTouched = poolWasTouched if poolWasTouched is not None else False
+        self.nextPlayer = _arg_def(nextPlayer, 0)
+        self.firstPlayer = _arg_def(firstPlayer, 0)
+        self.poolWasTouched = _arg_def(poolWasTouched, False)
 
     def is_end_of_game(self) -> bool:
         for player in self.players:
@@ -130,13 +137,17 @@ class Azul:
             # Place tiles onto the floor.
             player.floorCount += count
 
-    def score_round_and_deal(self):
+    def score_round(self):
         if not self.is_end_of_round():
             raise RuntimeError("Not allowed to score the round before it has ended.")
 
         self._score_round()
-        if not self.is_end_of_game():
-            self._deal_round()
+
+    def deal_round(self):
+        if not self.is_end_of_round():
+            raise RuntimeError("Not allowed to deal a new round before the old has ended.")
+
+        self._deal_round()
 
     def _score_round(self):
         for player in self.players:
@@ -155,7 +166,27 @@ class Azul:
             player.floorCount = 0
 
     def _deal_round(self):
-        pass
+        assert np.all(self.bins == 0)
+
+        sampleSize = Azul.BinNumber * Azul.BinSize
+        if sum(self.bag) < sampleSize:
+            raise NotImplementedError()  # todo
+
+        # sample = random.sample(Color, counts=self.bag, k=sampleSize)  # Sadly, only works in Python 3.9
+        population = np.repeat(Color, repeats=self.bag)
+        sample = np.random.choice(population, size=sampleSize, replace=False)
+
+        self.bins[...] = Color.Empty
+        for iBin, iSample in enumerate(range(0, sampleSize, Azul.BinSize)):
+            binSubsample = sample[iSample: iSample + Azul.BinSize]
+            for color, count in zip(*np.unique(binSubsample, return_counts=True)):
+                self.bins[iBin, color] = count
+
+        for color in sample:
+            self.bag[color] -= 1
+
+        self.poolWasTouched = False
+        self.nextPlayer = self.firstPlayer
 
     @staticmethod
     def get_tile_score(wall: np.ndarray, iRow: int, iCol: int) -> int:
