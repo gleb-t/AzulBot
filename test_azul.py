@@ -118,3 +118,35 @@ class TestAzul(unittest.TestCase):
         # Check who goes first next round.
         self.assertEqual(azul.firstPlayer, 0)
 
+    def test_score_round(self):
+
+        azul = Azul()
+
+        azul.players[0].wall[0, 3] = Color.Black
+        azul.players[0].wall[1, 0:3] = (Color.White, Color.Blue, Color.Yellow)
+        azul.players[0].queue[0] = (Color.White, 1)  # Scores 2.
+        azul.players[0].queue[1] = (Color.Red, 2)    # Scores 6.
+        azul.players[0].queue[2] = (Color.Black, 3)  # Scores 2.
+        azul.players[0].queue[3] = (Color.Red, 3)    # Scores 0.
+        azul.players[0].queue[4] = (Color.Blue, 5)   # Scores 1.
+        azul.players[0].floorCount = 3
+
+        azul.players[1].wall[3, :] = (Color.Red, Color.Black, Color.Empty, Color.Blue, Color.Yellow)
+        azul.players[1].wall[:, 2] = (Color.Red, Color.Yellow, Color.Blue, Color.Empty, Color.Black)
+        azul.players[1].queue[0] = (Color.Yellow, 1)  # Scores 2.
+        azul.players[1].queue[3] = (Color.White, 4)   # Scores 10
+        azul.players[1].floorCount = 1
+
+        azul.score_round_and_deal()
+
+        self.assertEqual(azul.players[0].score, 7)
+        self.assertEqual(azul.players[1].score, 11)
+
+        np.testing.assert_equal(azul.players[0].queue[0:3], 0)
+        np.testing.assert_equal(azul.players[0].queue[3], [Color.Red, 3])
+        np.testing.assert_equal(azul.players[0].queue[4], 0)
+
+        np.testing.assert_equal(azul.players[1].queue, 0)
+
+        self.assertEqual(azul.players[0].floorCount, 0)
+        self.assertEqual(azul.players[1].floorCount, 0)

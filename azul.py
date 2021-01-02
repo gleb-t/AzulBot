@@ -39,6 +39,7 @@ class Azul:
     BinSize = 4
     WallShape = (5, 5)
     FloorSize = 7
+    FloorScores = np.array([1, 1, 2, 2, 2, 3, 3], dtype=np.uint8)
 
     def __init__(self,
                  bagCount: Optional[np.ndarray] = None,
@@ -128,6 +129,63 @@ class Azul:
         else:
             # Place tiles onto the floor.
             player.floorCount += count
+
+    def score_round_and_deal(self):
+        if not self.is_end_of_round():
+            raise RuntimeError("Not allowed to score the round before it has ended.")
+
+        self._score_round()
+        if not self.is_end_of_game():
+            self._deal_round()
+
+    def _score_round(self):
+        for player in self.players:
+            for iRow, q in enumerate(player.queue):
+                color, count = q[0], q[1]
+                if count == iRow + 1:
+                    iCol = Azul.get_wall_column_by_color(iRow, color)
+                    player.wall[iRow, iCol] = color
+                    player.queue[iRow] = (Color.Empty, 0)
+                    player.score += Azul.get_tile_score(player.wall, iRow, iCol)
+
+            # Score the floor tiles.
+            for i in range(player.floorCount):
+                player.score = max(0, player.score - Azul.FloorScores[i])
+
+            player.floorCount = 0
+
+    def _deal_round(self):
+        pass
+
+    @staticmethod
+    def get_tile_score(wall: np.ndarray, iRow: int, iCol: int) -> int:
+        directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+        neighbors = [0] * 4
+        for i, d in enumerate(directions):
+            pos = (iRow, iCol)
+            while True:
+                nextPos = pos[0] + d[0], pos[1] + d[1]
+                if nextPos[0] < 0 or nextPos[0] >= Azul.WallShape[0] or \
+                        nextPos[1] < 0 or nextPos[1] >= Azul.WallShape[0] or \
+                        wall[nextPos] == Color.Empty:
+                    break
+
+                neighbors[i] += 1
+                pos = nextPos
+
+        # todo Is there a cleaner way?
+        scoreRow = neighbors[0] + neighbors[1] + 1
+        scoreCol = neighbors[2] + neighbors[3] + 1
+        scoreRow = scoreRow if scoreRow > 1 else 0
+        scoreCol = scoreCol if scoreCol > 1 else 0
+
+        score = scoreRow + scoreCol
+
+        return score if score > 0 else 1
+
+    @staticmethod
+    def get_wall_column_by_color(iRow: int, color: Union[Color, int]) -> int:
+        return (int(color) - 1 + iRow) % Azul.ColorNumber
 
     @staticmethod
     def get_wall_slot_color(index: Tuple[int, int]) -> Color:
