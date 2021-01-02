@@ -7,7 +7,10 @@ from typing import *
 import numpy as np
 
 
-def _arg_def(value, default):
+T = TypeVar('T')
+
+
+def _arg_def(value: T, default: T) -> T:
     return value if value is not None else default
 
 
@@ -36,6 +39,10 @@ class PlayerState:
         self.floorCount = _arg_def(floorCount, 0)
 
         self.score = _arg_def(score, 0)
+
+
+class IllegalMoveException(Exception):
+    pass
 
 
 class Azul:
@@ -107,6 +114,9 @@ class Azul:
         player = self.players[self.nextPlayer]
         count = self.bins[move.sourceBin, move.color]
 
+        if count == 0:
+            raise IllegalMoveException("Not allowed to take zero tiles.")
+
         # Update who goes first next round (changes when the pool is touched for the first time).
         if move.sourceBin == Azul.BinNumber:
             becomeFirstPlayer = not self.poolWasTouched
@@ -118,12 +128,13 @@ class Azul:
         # Pass the turn to the next player.
         self.nextPlayer = (self.nextPlayer + 1) % Azul.PlayerNumber
 
-        # Take away the tiles.
+        # Take away the tiles of the moved color.
         self.bins[move.sourceBin, move.color] = 0
 
         # If the move is to take tiles from a bin, then move the rest into the pool.
         if move.sourceBin < Azul.BinNumber:
             self.bins[Azul.BinNumber] += self.bins[move.sourceBin]
+            self.bins[move.sourceBin] = 0
 
         if move.targetQueue < Azul.WallShape[0]:
             # Place the tiles into the queue.
@@ -229,6 +240,6 @@ class Azul:
         return (int(color) - 1 + iRow) % Azul.ColorNumber
 
     @staticmethod
-    def get_wall_slot_color(index: Tuple[int, int]) -> Color:
+    def get_wall_slot_color(iRow: int, iCol: int) -> Color:
         # This generates the diagonal pattern on the playing board.
-        return Color((index[1] - index[0]) % Azul.ColorNumber + 1)
+        return Color((iCol - iRow) % Azul.ColorNumber + 1)

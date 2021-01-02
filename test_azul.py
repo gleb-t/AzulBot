@@ -49,7 +49,7 @@ class TestAzul(unittest.TestCase):
         assert_moves_match(expectedSources, expectedTargets)
 
         # Block a row of the wall, adding more invalid moves.
-        azul.players[0].wall[1, 0] = Azul.get_wall_slot_color((1, 0))
+        azul.players[0].wall[1, 0] = Azul.get_wall_slot_color(1, 0)
         expectedTargets = range(1, targetNumber)
 
         assert_moves_match(expectedSources, expectedTargets, exclude=[Move(1, 1, Color.White)])
@@ -71,6 +71,10 @@ class TestAzul(unittest.TestCase):
 
         # The pool should hold the leftovers.
         np.testing.assert_equal(azul.bins[-1], [0, 0, 1, 0, 0, 1])  # See 'Color'.
+        # The bin should be empty
+        np.testing.assert_equal(azul.bins[0], 0)
+        # The other bin shouldn't change.
+        np.testing.assert_equal(azul.bins[1], [0, 0, 1, 3, 0, 0])
 
         # The queue should only hold black.
         np.testing.assert_equal(azul.players[0].queue[1], [Color.Black, 2])
