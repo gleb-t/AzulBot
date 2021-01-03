@@ -24,8 +24,11 @@ class Color(IntEnum):
 
 
 class Move(NamedTuple):
+    # Which bin to take tiles from. The last index means taking from the pool.
     sourceBin: int = 0
+    # Which color to take. We always take all tiles of that color.
     color: int = Color.Empty
+    # Which queue to put the tiles in. The last index means putting directly on the floor.
     targetQueue: int = 0
 
     @staticmethod
@@ -37,9 +40,12 @@ class PlayerState:
 
     def __init__(self, wall: Optional[np.ndarray] = None, queue: Optional[np.ndarray] = None,
                  floorCount: Optional[int] = None, score: Optional[int] = None):
+        # A 2D array that stores the color value at each position.
+        # (Somewhat redundant, but support playing with the 'free board' variant.)
         self.wall = _arg_def(wall, np.zeros(Azul.WallShape, dtype=np.uint8))
         # Stores color and count per row.
         self.queue = _arg_def(queue, np.zeros((Azul.WallShape[0], 2), dtype=np.uint8))
+        # The number of tiles lying on the floor. (The color is irrelevant.)
         self.floorCount = _arg_def(floorCount, 0)
 
         self.score = _arg_def(score, 0)
@@ -81,15 +87,20 @@ class Azul:
                  firstPlayer: Optional[int] = None,
                  poolWasTouched: Optional[bool] = None):
 
+        # A 1D array that stores how many tiles of each color are left in the bag (indexed by the Color enum).
+        # The 'empty' color is always at zero.
         self.bag = _arg_def(bag, np.concatenate(([0], np.repeat(Azul.TileNumber, Azul.ColorNumber))))
-        # Bins store the count indexed by the Color enum. The 'empty' color is always at zero.
+        # Bins store the count per color, similarly to the bag.
         # The last bin is the 'pool'.
         self.bins = _arg_def(bins, np.zeros((Azul.BinNumber + 1, Azul.ColorNumber + 1), dtype=np.uint8))
 
         self.players = _arg_def(playerStates, [PlayerState() for _ in range(Azul.PlayerNumber)])
 
+        # The index of the player, whose turn it is to make a move.
         self.nextPlayer = _arg_def(nextPlayer, 0)
+        # The index of the player that will go first in the next round.
         self.firstPlayer = _arg_def(firstPlayer, 0)
+        # Whether someone has already taken tiles from the center (the pool) this round.
         self.poolWasTouched = _arg_def(poolWasTouched, False)
 
     def is_end_of_game(self) -> bool:
@@ -103,6 +114,9 @@ class Azul:
         return np.all(self.bins == 0)
 
     def enumerate_moves(self):
+        """
+        Enumerate all legal moves in the current state.
+        """
         player = self.players[self.nextPlayer]
         for iSource, source in enumerate(self.bins):
             for color, count in enumerate(source):
@@ -167,6 +181,9 @@ class Azul:
             player.floorCount += count
 
     def score_round(self):
+        """
+        Move the tiles from the queue to the wall and score them.
+        """
         if not self.is_end_of_round():
             raise RuntimeError("Not allowed to score the round before it has ended.")
 
@@ -180,7 +197,7 @@ class Azul:
                     player.score += Azul.get_tile_score(player.wall, iRow, iCol)
 
             # Score the floor tiles.
-            for i in range(player.floorCount):
+            for i in range(min(player.floorCount, Azul.FloorSize)):
                 player.score = max(0, player.score - Azul.FloorScores[i])
 
             player.floorCount = 0
@@ -189,12 +206,13 @@ class Azul:
         if not self.is_end_of_round():
             raise RuntimeError("Not allowed to deal a new round before the old has ended.")
 
+        # Refill the bag using the discarded tiles, if necessary.
         sampleSize = Azul.BinNumber * Azul.BinSize
         bagCount = sum(self.bag)
         if bagCount < sampleSize:
-            assert Azul.PlayerNumber == 2 and bagCount == 0  # The bag can't have leftovers in a two-player game.
             self._refill_bag()
 
+        # Randomly sample the bag to get the tiles for this round.
         if fixedSample is None:
             # sample = random.sample(Color, counts=self.bag, k=sampleSize)  # Sadly, only works in Python 3.9
             population = np.repeat(Color, repeats=self.bag)
@@ -204,17 +222,20 @@ class Azul:
             assert len(fixedSample) == sampleSize
             sample = fixedSample
 
+        # Distribute the sampled tiles among the bins.
         self.bins[...] = Color.Empty
         for iBin, iSample in enumerate(range(0, sampleSize, Azul.BinSize)):
             binSubsample = sample[iSample: iSample + Azul.BinSize]
             for color, count in zip(*np.unique(binSubsample, return_counts=True)):
                 self.bins[iBin, color] = count
 
+        # Keep track of which tiles are left in the bag.
         for color in sample:
             self.bag[color] -= 1
 
         assert np.all(self.bag >= 0)
 
+        # Prepare the first player flags.
         self.poolWasTouched = False
         self.nextPlayer = self.firstPlayer
 
@@ -223,8 +244,11 @@ class Azul:
             raise RuntimeError("Cannot score the game before the end of the game.")
 
         for player in self.players:
+            # Score full rows.
             player.score += np.sum(np.count_nonzero(player.wall, axis=1) == Azul.WallShape[1]) * Azul.ScorePerRow
+            # Score full columns.
             player.score += np.sum(np.count_nonzero(player.wall, axis=0) == Azul.WallShape[0]) * Azul.ScorePerColumn
+            # Score complete colors.
             player.score += np.sum(1 for color, count in zip(*np.unique(player.wall, return_counts=True))
                                    if color != Color.Empty and count == Azul.WallShape[0]) * Azul.ScorePerColor
 
@@ -238,6 +262,7 @@ class Azul:
             for color, count in zip(*np.unique(player.wall, return_counts=True)):
                 missingTiles[color] += count
 
+        # The rest are the discarded tiles that return back into the bag.
         for color in Color:
             if color != Color.Empty:
                 self.bag[color] = Azul.TileNumber - missingTiles[color]
@@ -303,6 +328,10 @@ class Azul:
 
     @staticmethod
     def get_tile_score(wall: np.ndarray, iRow: int, iCol: int) -> int:
+        """
+        Compute the score awarded for placing a tile onto the wall.
+        """
+        # Compute how many consecutive neighbors lie in each direction.
         directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
         neighbors = [0] * 4
         for i, d in enumerate(directions):
@@ -317,6 +346,7 @@ class Azul:
                 neighbors[i] += 1
                 pos = nextPos
 
+        # Compute the total score based on the neighbor information.
         # todo Is there a cleaner way?
         scoreRow = neighbors[0] + neighbors[1] + 1
         scoreCol = neighbors[2] + neighbors[3] + 1
