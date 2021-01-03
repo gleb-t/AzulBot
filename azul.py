@@ -25,8 +25,12 @@ class Color(IntEnum):
 
 class Move(NamedTuple):
     sourceBin: int = 0
-    targetQueue: int = 0
     color: int = Color.Empty
+    targetQueue: int = 0
+
+    @staticmethod
+    def from_str(s: str) -> 'Move':
+        return Move(int(s[0]), Azul.str_to_color(s[1]), int(s[2]))
 
 
 class PlayerState:
@@ -54,6 +58,20 @@ class Azul:
     WallShape = (5, 5)
     FloorSize = 7
     FloorScores = np.array([1, 1, 2, 2, 2, 3, 3], dtype=np.uint8)
+
+    ScorePerRow = 2
+    ScorePerColumn = 7
+    ScorePerColor = 10
+
+    ColorToChar = {
+        Color.Empty: '_',
+        Color.Blue: 'U',
+        Color.Yellow: 'Y',
+        Color.Red: 'R',
+        Color.Black: 'K',
+        Color.White: 'W'
+    }
+    CharToColor = dict(map(reversed, ColorToChar.items()))
 
     def __init__(self,
                  bag: Optional[np.ndarray] = None,
@@ -99,10 +117,10 @@ class Azul:
                             targetQueue[1] < iTarget + 1 and \
                             (targetQueue[0] == Color.Empty or targetQueue[0] == color):
 
-                        yield Move(iSource, iTarget, color)
+                        yield Move(iSource, color, iTarget)
 
                 # It's always valid to put the tiles on the floor.
-                yield Move(iSource, Azul.WallShape[0], color)
+                yield Move(iSource, color, Azul.WallShape[0])
 
     def apply_move(self, move: Move) -> 'Azul':
         newState = deepcopy(self)
@@ -115,7 +133,7 @@ class Azul:
         count = self.bins[move.sourceBin, move.color]
 
         if count == 0:
-            raise IllegalMoveException("Not allowed to take zero tiles.")
+            raise IllegalMoveException(f"Not allowed to take zero tiles. Move: {move}")
 
         # Update who goes first next round (changes when the pool is touched for the first time).
         if move.sourceBin == Azul.BinNumber:
@@ -167,7 +185,7 @@ class Azul:
 
             player.floorCount = 0
 
-    def deal_round(self):
+    def deal_round(self, fixedSample: Optional[List[Color]] = None):
         if not self.is_end_of_round():
             raise RuntimeError("Not allowed to deal a new round before the old has ended.")
 
@@ -177,9 +195,14 @@ class Azul:
             assert Azul.PlayerNumber == 2 and bagCount == 0  # The bag can't have leftovers in a two-player game.
             self._refill_bag()
 
-        # sample = random.sample(Color, counts=self.bag, k=sampleSize)  # Sadly, only works in Python 3.9
-        population = np.repeat(Color, repeats=self.bag)
-        sample = np.random.choice(population, size=sampleSize, replace=False)
+        if fixedSample is None:
+            # sample = random.sample(Color, counts=self.bag, k=sampleSize)  # Sadly, only works in Python 3.9
+            population = np.repeat(Color, repeats=self.bag)
+            sample = np.random.choice(population, size=sampleSize, replace=False)
+        else:
+            # Allow the sampled tiles to be specified deterministically for testing.
+            assert len(fixedSample) == sampleSize
+            sample = fixedSample
 
         self.bins[...] = Color.Empty
         for iBin, iSample in enumerate(range(0, sampleSize, Azul.BinSize)):
@@ -190,8 +213,20 @@ class Azul:
         for color in sample:
             self.bag[color] -= 1
 
+        assert np.all(self.bag >= 0)
+
         self.poolWasTouched = False
         self.nextPlayer = self.firstPlayer
+
+    def score_game(self):
+        if not self.is_end_of_game():
+            raise RuntimeError("Cannot score the game before the end of the game.")
+
+        for player in self.players:
+            player.score += np.sum(np.count_nonzero(player.wall, axis=1) == Azul.WallShape[1]) * Azul.ScorePerRow
+            player.score += np.sum(np.count_nonzero(player.wall, axis=0) == Azul.WallShape[0]) * Azul.ScorePerColumn
+            player.score += np.sum(1 for color, count in zip(*np.unique(player.wall, return_counts=True))
+                                   if color != Color.Empty and count == Azul.WallShape[0]) * Azul.ScorePerColor
 
     def _refill_bag(self):
         # First, count all the tiles that lie on the board, they won't be redrawn.
@@ -208,6 +243,63 @@ class Azul:
                 self.bag[color] = Azul.TileNumber - missingTiles[color]
 
         assert self.bag[Color.Empty] == 0
+
+    def print_state(self):
+        print('#' * 20)
+        self._print_bins()
+
+        for iPlayer in range(len(self.players)):
+            self._print_player(iPlayer)
+
+    def _print_bins(self):
+        print("### Table ###")
+        print("# Bins")
+        for iRow, b in enumerate(self.bins[:-1]):
+            line = ''.join(Azul.color_to_str(c) for c in Azul._bin_to_array(b))
+            print(f"  [{iRow}]" + line.rjust(4, '_'))
+
+        print("# Pool [{}]".format(' ' if self.poolWasTouched else '1'))
+        line = ''.join(Azul.color_to_str(c) for c in Azul._bin_to_array(self.bins[-1]))
+        print(f"  [{Azul.WallShape[0]}]" + line)
+
+    def _print_player(self, playerIndex: int):
+        player = self.players[playerIndex]
+
+        nextTurnStr = ' (NEXT)' if self.nextPlayer == playerIndex else ''
+        print(f"### Player {playerIndex}{nextTurnStr} ###")
+        print("# Queue")
+        for iRow, (color, count) in enumerate(player.queue):
+            line = Azul.color_to_str(color) * count
+            line = line.rjust(iRow + 1, '_')
+            line = line.rjust(Azul.WallShape[0], ' ')
+            print(f"  [{iRow}]" + line)
+        print("# Floor")
+        print("# " + ''.join(map(str, Azul.FloorScores)))
+        line = ''.join('X' for _ in range(player.floorCount)).ljust(Azul.FloorSize, '_')
+        print("  " + line)
+
+        print("# Wall")
+        for iRow, row in enumerate(player.wall):
+            line = ''
+            for iCol, color in enumerate(row):
+                if color == Color.Empty:
+                    line += Azul.color_to_str(Azul.get_wall_slot_color(iRow, iCol)).lower()
+                else:
+                    line += Azul.color_to_str(color)
+
+            print("  " + line)
+
+    @staticmethod
+    def _bin_to_array(bin_: np.ndarray) -> np.ndarray:
+        return np.repeat(Color, bin_)
+
+    @staticmethod
+    def color_to_str(color: Union[Color, int]) -> str:
+        return Azul.ColorToChar[Color(color)]
+
+    @staticmethod
+    def str_to_color(s: str) -> Color:
+        return Azul.CharToColor[s.upper().strip()]
 
     @staticmethod
     def get_tile_score(wall: np.ndarray, iRow: int, iCol: int) -> int:

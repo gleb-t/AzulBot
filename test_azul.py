@@ -28,7 +28,7 @@ class TestAzul(unittest.TestCase):
             output = list(azul.enumerate_moves())
             sourceTargetProduct = list(itertools.product(sources, targets))
             for expSource, expTarget in sourceTargetProduct:
-                move = Move(expSource[0], expTarget, expSource[1])
+                move = Move(expSource[0], expSource[1], expTarget)
                 if move not in exclude:
                     self.assertIn(move, output)
 
@@ -52,7 +52,7 @@ class TestAzul(unittest.TestCase):
         azul.players[0].wall[1, 0] = Azul.get_wall_slot_color(1, 0)
         expectedTargets = range(1, targetNumber)
 
-        assert_moves_match(expectedSources, expectedTargets, exclude=[Move(1, 1, Color.White)])
+        assert_moves_match(expectedSources, expectedTargets, exclude=[Move(1, Color.White, 1)])
 
     def test_apply_move_sequence(self):
         # This case is taken from the rulebook.
@@ -67,7 +67,7 @@ class TestAzul(unittest.TestCase):
 
         azul.firstPlayer = 1  # We will change it and check later.
 
-        azul = azul.apply_move(Move(0, 1, Color.Black))
+        azul = azul.apply_move(Move(0, Color.Black, 1, ))
 
         # The pool should hold the leftovers.
         np.testing.assert_equal(azul.bins[-1], [0, 0, 1, 0, 0, 1])  # See 'Color'.
@@ -92,8 +92,8 @@ class TestAzul(unittest.TestCase):
         self.assertEqual(azul.nextPlayer, 1)
 
         # Make a few more moves.
-        azul = azul.apply_move(Move(1, 2, Color.Yellow))
-        azul = azul.apply_move(Move(Azul.BinNumber, 3, Color.Red))
+        azul = azul.apply_move(Move(1, Color.Yellow, 2, ))
+        azul = azul.apply_move(Move(Azul.BinNumber, Color.Red, 3))
 
         # Check the pool.
         np.testing.assert_equal(azul.bins[-1], [0, 0, 1, 0, 0, 1])
@@ -224,6 +224,91 @@ class TestAzul(unittest.TestCase):
 
         azul.players[1].wall[4] = [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Blue]
         self.assertTrue(azul.is_end_of_game())
+
+    def test_score_game(self):
+        azul = Azul()
+        # Fill the main diagonal (all blue), the first row and the first column.
+        for i in range(Azul.WallShape[0]):
+            azul.players[0].wall[i, i] = Azul.get_wall_slot_color(i, i)
+            azul.players[0].wall[i, 0] = Azul.get_wall_slot_color(i, 0)
+            azul.players[0].wall[0, i] = Azul.get_wall_slot_color(0, i)
+
+        azul.score_game()
+        self.assertEqual(azul.players[0].score, Azul.ScorePerRow + Azul.ScorePerColumn + Azul.ScorePerColor)
+
+    def test_full_game(self):
+        # Test a full recorded game.
+        azul = Azul()
+
+        tilesPerRoundRaw = [
+            'RWYYRYUURRWWKKYYWWUR',
+            'WWUUUURKKKRUYKRUKYYU',
+            'URYKUWYYURYYKKURWWYK',
+            'RKKWUUWWRRKUUKWWWKRR',
+            'KYYRRYWKYYUWWWKRYRKU'
+        ]
+
+        tilesPerRound = [list(map(Azul.str_to_color, tiles)) for tiles in tilesPerRoundRaw]
+
+        # Moves alternate between players 0 and 1 within a round.
+        # The game keeps track of which player goes first each round, we only specify the very first.
+        firstPlayer = 0
+        movesPerRoundRaw = [
+            [
+                '3K1', '4W3', '0Y3', '2W3',
+                '5R2', '5Y1', '5W0', '1R0',
+                '5U4', '5Y5'
+            ],
+            [
+                '4Y3', '2K4', '0U4', '1U2',
+                '3K0', '5Y0', '5R1', '5K4',
+                '5U2', '5W1'
+            ],
+            [
+                       '4K4', '2Y1', '5U2',
+                '1Y2', '0K0', '3R0', '5U1',
+                '5Y2', '5K3', '5W4', '5R5'
+            ],
+            [
+                       '3W2', '1W4', '2R4',
+                '5U3', '5K3', '0R5', '5W2',
+                '5K2', '4R1', '5K2', '5W0'
+            ],
+            [
+                '2U1', '4U0', '3W2', '5R4',
+                '5K3', '5Y2', '5W2', '1R4',
+                '5Y0', '5K1', '0K3', '5Y3',
+                '5R4', '5W5'
+            ]
+        ]
+
+        movesPerRound = [list(map(Move.from_str, moves)) for moves in movesPerRoundRaw]
+
+        scoresPerRound = [
+            [4, 3],
+            [19, 5],
+            [33, 16],
+            [45, 37],
+            [54, 55]
+        ]
+        finalScores = [70, 71]
+
+        # Simulate the game and check the score each round.
+        azul.nextPlayer = firstPlayer
+        for iRound, (tiles, moves, scores) in enumerate(zip(tilesPerRound, movesPerRound, scoresPerRound)):
+            azul.deal_round(fixedSample=tiles)
+
+            for move in moves:
+                azul = azul.apply_move(move)
+
+            self.assertTrue(azul.is_end_of_round())
+            azul.score_round()
+
+            self.assertEqual([p.score for p in azul.players], scores)
+
+        azul.score_game()
+        self.assertEqual([p.score for p in azul.players], finalScores)
+
 
 
 
