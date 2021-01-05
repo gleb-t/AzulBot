@@ -3,7 +3,7 @@ from typing import *
 
 import numpy as np
 
-from azul import Azul, PlayerState, Color, Move, IllegalMoveException
+from azulbot.azul import Azul, PlayerState, Color, Move, IllegalMoveException
 
 
 class AzulCmd(cmd.Cmd):

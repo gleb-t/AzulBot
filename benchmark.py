@@ -1,7 +1,7 @@
 import random
 from typing import *
 
-from azul import Azul
+from azulbot.azul import Azul
 from lib.StageTimer import StageTimer
 
 

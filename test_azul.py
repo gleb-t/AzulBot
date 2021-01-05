@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from azul import Azul, Color, Move
+from azulbot.azul import Azul, Color, Move
 
 
 class TestAzul(unittest.TestCase):
