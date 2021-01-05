@@ -309,6 +309,43 @@ class TestAzul(unittest.TestCase):
         azul.score_game()
         self.assertEqual([p.score for p in azul.players], finalScores)
 
+    def test_hash(self):
+        import copy
+
+        azul1 = Azul()
+        azul1.bins[1] = [0, 2, 3, 4, 5, 6]
+        azul1.players[0].wall[1, 1] = Azul.get_wall_slot_color(1, 1)
+
+        azul2 = copy.deepcopy(azul1)
+
+        self.assertEqual(azul1, azul2)
+        self.assertEqual(hash(azul1), hash(azul2))
+
+        azul2.bins[1, 1] = 5
+
+        self.assertNotEqual(azul1, azul2)
+        self.assertNotEqual(hash(azul1), hash(azul2))
+
+        azul2 = copy.deepcopy(azul1)
+        azul2.players[1].score = 1
+
+        self.assertNotEqual(azul1, azul2)
+        self.assertNotEqual(hash(azul1), hash(azul2))
+
+        azul2 = copy.deepcopy(azul1)
+        azul2.players[1].queue[0] = [1, 1]
+
+        self.assertNotEqual(azul1, azul2)
+        self.assertNotEqual(hash(azul1), hash(azul2))
+
+        # Trying using as keys in a dict. This shouldn't throw.
+        d1 = {azul1: 'a1', azul2: 'a2'}
+        d2 = copy.deepcopy(d1)
+
+        d1[azul1] = 'a1'
+        self.assertEqual(d1, d2)
+
+
 
 
 

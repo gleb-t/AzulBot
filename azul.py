@@ -1,4 +1,6 @@
+import abc
 import itertools
+import operator
 import random
 from copy import deepcopy
 from enum import IntEnum
@@ -36,7 +38,29 @@ class Move(NamedTuple):
         return Move(int(s[0]), Azul.str_to_color(s[1]), int(s[2]))
 
 
-class PlayerState:
+class ComparableNumpy(abc.ABC):
+    """
+    An abstract class implementing the equality operator
+    with the support for numpy array fields.
+    """
+    def __eq__(self, o: object) -> bool:
+        if type(self) == type(o):
+            # Object's field could be changed dynamically, so we have to check the keys as well as values.
+            if tuple(self.__dict__.keys()) != tuple(o.__dict__.keys()):
+                return False
+            for v1, v2 in zip(self.__dict__.values(), o.__dict__.values()):
+                if isinstance(v1, np.ndarray):
+                    if not np.array_equal(v1, v2):
+                        return False
+                elif v1 != v2:
+                    return False
+
+            return True
+        else:
+            return NotImplemented
+
+
+class PlayerState(ComparableNumpy):
 
     def __init__(self, wall: Optional[np.ndarray] = None, queue: Optional[np.ndarray] = None,
                  floorCount: Optional[int] = None, score: Optional[int] = None):
@@ -50,12 +74,15 @@ class PlayerState:
 
         self.score = _arg_def(score, 0)
 
+    def __hash__(self) -> int:
+        return hash(tuple(map(hash, (self.wall.tobytes(), self.queue.tobytes(), self.floorCount, self.score))))
+
 
 class IllegalMoveException(Exception):
     pass
 
 
-class Azul:
+class Azul(ComparableNumpy):
     ColorNumber = 5
     TileNumber = 20
     PlayerNumber = 2
@@ -102,6 +129,11 @@ class Azul:
         self.firstPlayer = _arg_def(firstPlayer, 0)
         # Whether someone has already taken tiles from the center (the pool) this round.
         self.poolWasTouched = _arg_def(poolWasTouched, False)
+
+    def __hash__(self) -> int:
+        return hash(tuple(map(hash, (self.bag.tobytes(), self.bins.tobytes(),
+                                     tuple(map(hash, self.players)),
+                                     self.nextPlayer, self.firstPlayer, self.poolWasTouched))))
 
     def is_end_of_game(self) -> bool:
         for player in self.players:
