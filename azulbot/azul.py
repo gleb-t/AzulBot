@@ -397,3 +397,32 @@ class Azul(ComparableNumpy):
     def get_wall_slot_color(iRow: int, iCol: int) -> Color:
         # This generates the diagonal pattern on the playing board.
         return Color((iCol - iRow) % Azul.ColorNumber + 1)
+
+
+def play_until_end(azul: Azul, players: Optional[List[Callable[[Azul], Move]]] = None, maxRoundTimeout: int = 100):
+    if players is None:
+        def random_bot(az: Azul):
+            return random.choice(tuple(az.enumerate_moves()))
+
+        players = [random_bot] * Azul.PlayerNumber
+
+    roundCount = 0
+    while not azul.is_end_of_game():
+        # We might get a game in the middle of a round, so we have to check.
+        if azul.is_end_of_round():
+            azul.deal_round()
+
+        while not azul.is_end_of_round():
+            move = players[azul.nextPlayer](azul)
+            azul = azul.apply_move(move)
+
+        azul.score_round()
+        roundCount += 1
+
+        if roundCount > maxRoundTimeout:
+            raise RuntimeError(f"Timed out after {maxRoundTimeout} rounds.")
+
+    azul.score_game()
+
+    return azul
+
