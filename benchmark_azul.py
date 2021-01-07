@@ -14,7 +14,7 @@ def random_bot(azul: Azul) -> Move:
 
 def build_mcts_bot(budget: int = 1000):
     def _bot(azul: Azul):
-        mcts = MctsBot(azul)
+        mcts = MctsBot(azul, azul.nextPlayer)
         for _ in range(budget):
             mcts.step()
 
@@ -24,9 +24,9 @@ def build_mcts_bot(budget: int = 1000):
 
 
 def main():
-    gamesToPlay = 50
+    gamesToPlay = 10
     maxRoundsPerGame = 100
-    mctsBudget = 10
+    mctsBudget = 50
 
     players = [random_bot, build_mcts_bot(mctsBudget)]
     scores = []
@@ -42,23 +42,23 @@ def main():
             timer.start_stage('deal')
             azul.deal_round()
 
-            while not azul.is_end_of_round():
-                timer.start_stage('enumerate')
+            while not azul.is_round_end():
+                timer.start_stage('decide')
                 move = players[azul.nextPlayer](azul)
                 timer.start_stage('move')
-                azul = azul.apply_move(move)
+                azul = azul.apply_move(move).state
 
             timer.start_stage('score')
             azul.score_round()
             roundCount += 1
 
-            if azul.is_end_of_game():
+            if azul.is_game_end():
                 azul.score_game()
                 break
 
         timer.end_stage()
 
-        if azul.is_end_of_game():
+        if azul.is_game_end():
             timer.end_pass()
             dur = timer.get_pass_duration()
             scores.append([azul.players[0].score, azul.players[1].score])

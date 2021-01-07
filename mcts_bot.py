@@ -1,13 +1,15 @@
+import copy
 import math
 import random
 from typing import *
 
-from azulbot.azul import Azul, Move, play_until_end
+from azulbot import GameState, TMove
 
 
 class Node:
 
-    def __init__(self, state: Azul, move: Optional[Move], parent: Optional['Node']):
+    def __init__(self, state: GameState[TMove], move: Optional[TMove], parent: Optional['Node'],
+                 isRandom: bool = False):
         self.state = state
         self.move = move
         self.parent = parent
@@ -15,16 +17,17 @@ class Node:
         self.wins = 0
         self.plays = 0
 
-        self.isRandom = False
+        self.isRandom = isRandom
 
 
 class MctsBot:
 
-    ExplorationWeight = 1.4142
+    ExplorationWeight = 1 / 1.4142
 
-    def __init__(self, state: Azul):
+    def __init__(self, state: GameState[TMove], playerIndex: int):
 
-        self.root = Node(state, move=None, parent=None)
+        self.root = Node(copy.deepcopy(state), move=None, parent=None)
+        self.playerIndex = playerIndex
 
     def step(self):
 
@@ -36,20 +39,26 @@ class MctsBot:
 
             node = self._select_max_uct(node.children, node.plays)
 
-        # If the node is followed by a stochastic state update, mark it as random and just do a playout.
-        if node.isRandom or node.state.is_end_of_round():
-            node.isRandom = True
-        else:
+        # If the node is followed by a stochastic state update, then just do a playout.
+        # If the node represents a terminal state, we don't need to expand it.
+        if not node.isRandom and not node.state.is_game_end():
             # Otherwise, expand the node, appending all possible states, and playout a random new child.
-            node.children = list(map(lambda m: Node(node.state.apply_move(m), m, node), node.state.enumerate_moves()))
+            assert len(node.children) == 0
+            for move in node.state.enumerate_moves():
+                outcome = node.state.apply_move(move)
+                node.children.append(Node(outcome.state, move, node, isRandom=outcome.isRandom))
+
             node = random.choice(node.children)
 
-        # Do a playout.
-        terminalState = play_until_end(node.state)
+        if not node.state.is_game_end():
+            # Do a playout.
+            terminalState = copy.deepcopy(node.state)
+            terminalState.playout()
+        else:
+            # We're already in the terminal state, just reuse the result.
+            terminalState = node.state
 
-        assert len(terminalState.players) == 2
-        iPlayer = self.root.state.nextPlayer
-        isWinInt = int(terminalState.players[iPlayer].score > terminalState.players[(iPlayer + 1) % 2].score)
+        isWinInt = terminalState.get_score(self.playerIndex)
 
         # Update the parents.
         while node is not None:
@@ -67,7 +76,7 @@ class MctsBot:
 
     @staticmethod
     def _select_max_uct(nodes: Sequence[Node], parentPlays: int):
-        bestIndex, bestVal = 0, -1
+        bestIndices, bestVal = [], -1
         for i, node in enumerate(nodes):
             if node.plays == 0:
                 return node
@@ -76,6 +85,8 @@ class MctsBot:
 
             if uct > bestVal:
                 bestVal = uct
-                bestIndex = i
+                bestIndices = [i]
+            elif uct == bestVal:
+                bestIndices.append(i)
 
-        return nodes[bestIndex]
+        return nodes[random.choice(bestIndices)]

@@ -67,7 +67,7 @@ class TestAzul(unittest.TestCase):
 
         azul.firstPlayer = 1  # We will change it and check later.
 
-        azul = azul.apply_move(Move(0, Color.Black, 1, ))
+        azul = azul.apply_move(Move(0, Color.Black, 1, )).state
 
         # The pool should hold the leftovers.
         np.testing.assert_equal(azul.bins[-1], [0, 0, 1, 0, 0, 1])  # See 'Color'.
@@ -92,8 +92,8 @@ class TestAzul(unittest.TestCase):
         self.assertEqual(azul.nextPlayer, 1)
 
         # Make a few more moves.
-        azul = azul.apply_move(Move(1, Color.Yellow, 2, ))
-        azul = azul.apply_move(Move(Azul.BinNumber, Color.Red, 3))
+        azul = azul.apply_move(Move(1, Color.Yellow, 2, )).state
+        azul = azul.apply_move(Move(Azul.BinNumber, Color.Red, 3)).state
 
         # Check the pool.
         np.testing.assert_equal(azul.bins[-1], [0, 0, 1, 0, 0, 1])
@@ -214,16 +214,16 @@ class TestAzul(unittest.TestCase):
     def test_is_end_of_game(self):
         azul = Azul()
 
-        self.assertFalse(azul.is_end_of_game())
+        self.assertFalse(azul.is_game_end())
 
         azul.players[0].wall[4] = [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Empty]
-        self.assertFalse(azul.is_end_of_game())
+        self.assertFalse(azul.is_game_end())
 
         azul.players[0].wall[:, 0] = [Color.Blue, Color.White, Color.Black, Color.Red, Color.Yellow]
-        self.assertFalse(azul.is_end_of_game())
+        self.assertFalse(azul.is_game_end())
 
         azul.players[1].wall[4] = [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Blue]
-        self.assertTrue(azul.is_end_of_game())
+        self.assertTrue(azul.is_game_end())
 
     def test_score_game(self):
         azul = Azul()
@@ -299,9 +299,9 @@ class TestAzul(unittest.TestCase):
             azul.deal_round(fixedSample=tiles)
 
             for move in moves:
-                azul = azul.apply_move(move)
+                azul = azul.apply_move(move).state
 
-            self.assertTrue(azul.is_end_of_round())
+            self.assertTrue(azul.is_round_end())
             azul.score_round()
 
             self.assertEqual([p.score for p in azul.players], scores)

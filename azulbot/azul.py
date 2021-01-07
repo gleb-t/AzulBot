@@ -8,6 +8,7 @@ from typing import *
 
 import numpy as np
 
+from azulbot.game import GameState, TMove, MoveOutcome
 
 T = TypeVar('T')
 
@@ -82,7 +83,8 @@ class IllegalMoveException(Exception):
     pass
 
 
-class Azul(ComparableNumpy):
+class Azul(GameState[Move], ComparableNumpy):
+
     ColorNumber = 5
     TileNumber = 20
     PlayerNumber = 2
@@ -135,14 +137,14 @@ class Azul(ComparableNumpy):
                                      tuple(map(hash, self.players)),
                                      self.nextPlayer, self.firstPlayer, self.poolWasTouched))))
 
-    def is_end_of_game(self) -> bool:
+    def is_game_end(self) -> bool:
         for player in self.players:
             if np.any(np.count_nonzero(player.wall, axis=1) == Azul.WallShape[1]):
                 return True
 
         return False
 
-    def is_end_of_round(self) -> bool:
+    def is_round_end(self) -> bool:
         return np.all(self.bins == 0)
 
     def enumerate_moves(self):
@@ -150,6 +152,7 @@ class Azul(ComparableNumpy):
         Enumerate all legal moves in the current state.
         """
         player = self.players[self.nextPlayer]
+        moves = []
         for iSource, source in enumerate(self.bins):
             for color, count in enumerate(source):
                 if count == 0 or color == Color.Empty:
@@ -163,16 +166,18 @@ class Azul(ComparableNumpy):
                             targetQueue[1] < iTarget + 1 and \
                             (targetQueue[0] == Color.Empty or targetQueue[0] == color):
 
-                        yield Move(iSource, color, iTarget)
+                        moves.append(Move(iSource, color, iTarget))
 
                 # It's always valid to put the tiles on the floor.
-                yield Move(iSource, color, Azul.WallShape[0])
+                moves.append(Move(iSource, color, Azul.WallShape[0]))
 
-    def apply_move(self, move: Move) -> 'Azul':
+        return moves
+
+    def apply_move(self, move: Move) -> MoveOutcome['Azul']:
         newState = deepcopy(self)
         newState._apply_move_inplace(move)
 
-        return newState
+        return MoveOutcome(newState, isRandom=newState.is_round_end(), isEnd=newState.is_game_end())
 
     def _apply_move_inplace(self, move: Move):
         player = self.players[self.nextPlayer]
@@ -212,11 +217,45 @@ class Azul(ComparableNumpy):
             # Place tiles onto the floor.
             player.floorCount += count
 
+    def playout(self, players: Optional[List[Callable[['Azul'], Move]]] = None, maxRoundTimeout: int = 100):
+        if players is None:
+            def random_bot(az: Azul):
+                return random.choice(tuple(az.enumerate_moves()))
+
+            players = [random_bot] * Azul.PlayerNumber
+
+        roundCount = 0
+        while not self.is_game_end():
+            # We might get a game in the middle of a round, so we have to check.
+            if self.is_round_end():
+                self.deal_round()
+
+            while not self.is_round_end():
+                move = players[self.nextPlayer](self)
+                self._apply_move_inplace(move)
+
+            self.score_round()
+            roundCount += 1
+
+            if roundCount > maxRoundTimeout:
+                raise RuntimeError(f"Timed out after {maxRoundTimeout} rounds.")
+
+        self.score_game()
+
+    def get_score(self, playerIndex: int) -> float:
+        if not self.is_game_end():
+            return 0
+
+        assert len(self.players) == 2
+
+        # 1 if won, 0 otherwise.
+        return int(self.players[playerIndex].score > self.players[(playerIndex + 1) % 2].score)
+
     def score_round(self):
         """
         Move the tiles from the queue to the wall and score them.
         """
-        if not self.is_end_of_round():
+        if not self.is_round_end():
             raise RuntimeError("Not allowed to score the round before it has ended.")
 
         for player in self.players:
@@ -235,7 +274,7 @@ class Azul(ComparableNumpy):
             player.floorCount = 0
 
     def deal_round(self, fixedSample: Optional[List[Color]] = None):
-        if not self.is_end_of_round():
+        if not self.is_round_end():
             raise RuntimeError("Not allowed to deal a new round before the old has ended.")
 
         # Refill the bag using the discarded tiles, if necessary.
@@ -272,7 +311,7 @@ class Azul(ComparableNumpy):
         self.nextPlayer = self.firstPlayer
 
     def score_game(self):
-        if not self.is_end_of_game():
+        if not self.is_game_end():
             raise RuntimeError("Cannot score the game before the end of the game.")
 
         for player in self.players:
@@ -398,31 +437,4 @@ class Azul(ComparableNumpy):
         # This generates the diagonal pattern on the playing board.
         return Color((iCol - iRow) % Azul.ColorNumber + 1)
 
-
-def play_until_end(azul: Azul, players: Optional[List[Callable[[Azul], Move]]] = None, maxRoundTimeout: int = 100):
-    if players is None:
-        def random_bot(az: Azul):
-            return random.choice(tuple(az.enumerate_moves()))
-
-        players = [random_bot] * Azul.PlayerNumber
-
-    roundCount = 0
-    while not azul.is_end_of_game():
-        # We might get a game in the middle of a round, so we have to check.
-        if azul.is_end_of_round():
-            azul.deal_round()
-
-        while not azul.is_end_of_round():
-            move = players[azul.nextPlayer](azul)
-            azul = azul.apply_move(move)
-
-        azul.score_round()
-        roundCount += 1
-
-        if roundCount > maxRoundTimeout:
-            raise RuntimeError(f"Timed out after {maxRoundTimeout} rounds.")
-
-    azul.score_game()
-
-    return azul
 
