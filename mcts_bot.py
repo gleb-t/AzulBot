@@ -26,7 +26,7 @@ class MctsBot:
 
     def __init__(self, state: GameState[TMove], playerIndex: int):
 
-        self.root = Node(copy.deepcopy(state), move=None, parent=None)
+        self.root = Node(state.copy(), move=None, parent=None)
         self.playerIndex = playerIndex
 
     def step(self):
@@ -52,7 +52,7 @@ class MctsBot:
 
         if not node.state.is_game_end():
             # Do a playout.
-            terminalState = copy.deepcopy(node.state)
+            terminalState = node.state.copy()
             terminalState.playout()
         else:
             # We're already in the terminal state, just reuse the result.

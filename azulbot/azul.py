@@ -1,12 +1,9 @@
-import abc
-import itertools
-import operator
 import random
-from copy import deepcopy
 from enum import IntEnum
 from typing import *
 
 import numpy as np
+from numba import jit
 
 from azulbot.game import GameState, TMove, MoveOutcome
 
@@ -39,7 +36,7 @@ class Move(NamedTuple):
         return Move(int(s[0]), Azul.str_to_color(s[1]), int(s[2]))
 
 
-class ComparableNumpy(abc.ABC):
+class ComparableNumpy():
     """
     An abstract class implementing the equality operator
     with the support for numpy array fields.
@@ -77,6 +74,9 @@ class PlayerState(ComparableNumpy):
 
     def __hash__(self) -> int:
         return hash(tuple(map(hash, (self.wall.tobytes(), self.queue.tobytes(), self.floorCount, self.score))))
+
+    def copy(self) -> 'PlayerState':
+        return PlayerState(self.wall.copy(), self.queue.copy(), self.floorCount, self.score)
 
 
 class IllegalMoveException(Exception):
@@ -137,6 +137,10 @@ class Azul(GameState[Move], ComparableNumpy):
                                      tuple(map(hash, self.players)),
                                      self.nextPlayer, self.firstPlayer, self.poolWasTouched))))
 
+    def copy(self) -> 'Azul':
+        return Azul(self.bag.copy(), self.bins.copy(), [p.copy() for p in self.players],
+                    self.nextPlayer, self.firstPlayer, self.poolWasTouched)
+
     def is_game_end(self) -> bool:
         for player in self.players:
             if np.any(np.count_nonzero(player.wall, axis=1) == Azul.WallShape[1]):
@@ -152,29 +156,34 @@ class Azul(GameState[Move], ComparableNumpy):
         Enumerate all legal moves in the current state.
         """
         player = self.players[self.nextPlayer]
+        return Azul._enumerate_moves_fast(self.bins, player.queue, player.wall, Azul.WallShape[0])
+
+    @staticmethod
+    @jit(nopython=True)
+    def _enumerate_moves_fast(bins: np.ndarray, queue: np.ndarray, wall: np.ndarray,
+                              floorIndex: int = 6):
         moves = []
-        for iSource, source in enumerate(self.bins):
+        for iSource, source in enumerate(bins):
             for color, count in enumerate(source):
                 if count == 0 or color == Color.Empty:
                     continue
 
-                for iTarget, (targetQueue, targetRow) in enumerate(zip(player.queue, player.wall)):
+                for iTarget, (targetQueue, targetRow) in enumerate(zip(queue, wall)):
                     # If the color isn't already on the wall in that row,
                     # and the queue has space (its size is index+1),
                     # and the queue is completely empty (first element empty) or contains the same color.
-                    if color not in targetRow and \
+                    if np.all(targetRow != color) and \
                             targetQueue[1] < iTarget + 1 and \
                             (targetQueue[0] == Color.Empty or targetQueue[0] == color):
-
                         moves.append(Move(iSource, color, iTarget))
 
                 # It's always valid to put the tiles on the floor.
-                moves.append(Move(iSource, color, Azul.WallShape[0]))
+                moves.append(Move(iSource, color, floorIndex))
 
         return moves
 
     def apply_move(self, move: Move) -> MoveOutcome['Azul']:
-        newState = deepcopy(self)
+        newState = self.copy()
         newState._apply_move_inplace(move)
 
         return MoveOutcome(newState, isRandom=newState.is_round_end(), isEnd=newState.is_game_end())

@@ -1,3 +1,4 @@
+import copy
 from abc import abstractmethod, ABCMeta
 from dataclasses import dataclass
 from typing import *
@@ -15,6 +16,9 @@ class MoveOutcome(Generic[TGame]):
 
 
 class GameState(Generic[TMove], metaclass=ABCMeta):
+
+    def copy(self) -> 'GameState[TMove]':
+        return copy.deepcopy(self)
 
     @abstractmethod
     def enumerate_moves(self) -> List[TMove]:
