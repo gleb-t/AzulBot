@@ -199,6 +199,10 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 
+# Visual Studio.
+.vs/
+*.user
+x64/
 
 ### Custom.
 
