@@ -24,12 +24,13 @@ def build_mcts_bot(budget: int = 1000):
 
 
 def main():
-    gamesToPlay = 10
+    gamesToPlay = 1
     maxRoundsPerGame = 100
-    mctsBudget = 50
+    mctsBudget = 10000
 
     players = [random_bot, build_mcts_bot(mctsBudget)]
     scores = []
+    timePerMove = []
 
     timer = StageTimer()
     for iGame in range(gamesToPlay):
@@ -38,6 +39,7 @@ def main():
         azul = Azul()
 
         roundCount = 0
+        moveCount = 0
         for _ in range(maxRoundsPerGame):
             timer.start_stage('deal')
             azul.deal_round()
@@ -47,6 +49,7 @@ def main():
                 move = players[azul.nextPlayer](azul)
                 timer.start_stage('move')
                 azul = azul.apply_move(move).state
+                moveCount += 1 if azul.nextPlayer == 1 else 0
 
             timer.start_stage('score')
             azul.score_round()
@@ -62,6 +65,7 @@ def main():
             timer.end_pass()
             dur = timer.get_pass_duration()
             scores.append([azul.players[0].score, azul.players[1].score])
+            timePerMove.append(timer.get_pass_timings()['decide'] / moveCount)
             print(f"Finished a game with scores {azul.players[0].score}:{azul.players[1].score}"
                   f" in {roundCount} rounds and {dur:.2f} s.")
 
@@ -78,6 +82,7 @@ def main():
 
     print(timer.get_total_report())
     print("Average scores: {:.1f} {:.1f}".format(*tuple(scoresAvg)))
+    print("Average time per move: {:.1f}".format(np.mean(np.array(timePerMove))))
     print("Wins: {} vs {}".format(winsFirst, winsSecond))
     print("Done.")
 
