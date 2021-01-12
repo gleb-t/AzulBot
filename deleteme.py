@@ -1,4 +1,22 @@
+import time
 
-import azulbot.azulsim as azulsim
+from azulpy.azul import Azul
+from azulsim import AzulState
 
-print(azulsim.test(5))
+
+azul = Azul()
+timeBefore = time.time()
+for _ in range(1000):
+    s = azul.enumerate_moves()
+timeAfter = time.time()
+
+print(f"Python finished in {timeAfter - timeBefore:.2f} s.")
+
+
+azul = AzulState()
+timeBefore = time.time()
+for _ in range(1000):
+    s = azul.enumerate_moves()
+timeAfter = time.time()
+
+print(f"C++ finished in {timeAfter - timeBefore:.2f} s.")

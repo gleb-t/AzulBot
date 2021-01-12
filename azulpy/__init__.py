@@ -1,1 +1,1 @@
-from azulbot.azul import *
+from azulpy.azul import *

@@ -25,6 +25,9 @@ class PlayerState:
     floorCount: int
     score: int
 
+    def set_wall(self, rowIndex: int, colIndex: int, color: Color): ...
+    def set_queue(self, queueIndex: int, color: Color, count: int): ...
+
 
 class AzulState:
     ColorNumber: int
@@ -50,4 +53,8 @@ class AzulState:
 
     def set_bin(self, binIndex: int, color: Color, count: int): ...
     def enumerate_moves(self) -> List[Move]: ...
+
+    @staticmethod
+    def get_wall_slot_color(iRow: int, iCol: int) -> Color: ...
+
 

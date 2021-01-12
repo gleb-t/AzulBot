@@ -9,12 +9,9 @@ Move::Move(uint8_t sourceBin, Color color, uint8_t targetQueue)
 {
 }
 
+
 AzulState::AzulState() = default;
 
-void AzulState::set_bin(size_t binIndex, Color color, uint8_t count)
-{
-    bins[binIndex][static_cast<uint8_t>(color)] = count;
-}
 
 std::vector<Move> AzulState::enumerate_moves()
 {

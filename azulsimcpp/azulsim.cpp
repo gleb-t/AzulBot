@@ -7,17 +7,18 @@
 namespace py = pybind11;
 using namespace pybind11::literals;
 
-int test(int a)
+// Hash a value and combine with another hash.
+// From https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
+template <class T>
+inline size_t hash(size_t seed, T const& v)
 {
-	return a + 5;
+    return seed ^ (std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
 
 
 PYBIND11_MODULE(azulsim, m) 
 {
     m.doc() = "azulsim";
-
-    m.def("test", &test, "Test", py::arg("a"));
 
     py::enum_<Color>(m, "Color")
         .value("Empty", Color::Empty)
@@ -28,14 +29,31 @@ PYBIND11_MODULE(azulsim, m)
         .value("White", Color::White);
 
     py::class_<Move>(m, "Move")
-        .def(py::init<uint8_t, Color, uint8_t>());
+        .def(py::init<uint8_t, Color, uint8_t>())
+        .def("__repr__", [](const Move& m) 
+        {
+            return "<Move '" + std::to_string(m.sourceBin) + " " +
+                   std::to_string(static_cast<uint8_t>(m.color)) + " " + std::to_string(m.targetQueue) + "'>";
+        })
+        .def("__hash__", [](const Move& m)
+        {
+            return hash(hash(hash(size_t{ 0 }, m.sourceBin), static_cast<uint8_t>(m.color)), m.targetQueue);
+        })
+        .def("__eq__", [](const Move& m1, const Move& m2)
+        {
+            return m1 == m2;
+        });
 
     py::class_<PlayerState>(m, "PlayerState")
         .def(py::init())
         .def_readwrite("wall", &PlayerState::wall)
         .def_readwrite("queue", &PlayerState::queue)
         .def_readwrite("floorCount", &PlayerState::floorCount)
-        .def_readwrite("score", &PlayerState::score);
+        .def_readwrite("score", &PlayerState::score)
+
+        .def("set_wall", &PlayerState::set_wall)
+        .def("set_queue", &PlayerState::set_queue);
+
 
     py::class_<AzulState>(m, "AzulState")
         .def(py::init())
@@ -56,6 +74,7 @@ PYBIND11_MODULE(azulsim, m)
         .def_readwrite("poolWasTouched", &AzulState::poolWasTouched)
 
         .def("set_bin", &AzulState::set_bin)
-        .def("enumerate_moves", &AzulState::enumerate_moves);
+        .def("enumerate_moves", &AzulState::enumerate_moves)
+        .def_static("get_wall_slot_color", &AzulState::get_wall_slot_color);
 }
 
