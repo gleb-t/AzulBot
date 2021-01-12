@@ -20,6 +20,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="azulsim.cpp" />
+    <ClCompile Include="AzulState.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AzulState.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

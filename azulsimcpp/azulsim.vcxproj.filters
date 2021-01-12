@@ -18,5 +18,13 @@
     <ClCompile Include="azulsim.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AzulState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AzulState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

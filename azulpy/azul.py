@@ -5,7 +5,7 @@ from typing import *
 import numpy as np
 from numba import jit
 
-from azulbot.game import GameState, TMove, MoveOutcome
+from azulpy.game import GameState, TMove, MoveOutcome
 
 T = TypeVar('T')
 
@@ -161,7 +161,7 @@ class Azul(GameState[Move], ComparableNumpy):
     @staticmethod
     @jit(nopython=True)
     def _enumerate_moves_fast(bins: np.ndarray, queue: np.ndarray, wall: np.ndarray,
-                              floorIndex: int = 6):
+                              floorIndex: int = 5):
         moves = []
         for iSource, source in enumerate(bins):
             for color, count in enumerate(source):

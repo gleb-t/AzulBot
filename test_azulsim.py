@@ -3,24 +3,24 @@ import unittest
 
 import numpy as np
 
-from azulbot.azul import Azul, Color, Move
+from azulsim import AzulState, Color, Move
 
 
 class TestAzul(unittest.TestCase):
 
     def test_enumerate_moves_basic(self):
         # Init an empty board, and init with a few tiles.
-        azul = Azul()
+        azul = AzulState()
 
-        azul.bins[0][Color.Red] = 2
-        azul.bins[0][Color.Blue] = 1
-        azul.bins[0][Color.Black] = 1
+        azul.set_bin(0, Color.Red, 2)
+        azul.set_bin(0, Color.Blue, 1)
+        azul.set_bin(0, Color.Black, 1)
 
-        azul.bins[1][Color.White] = 4
+        azul.set_bin(1, Color.White, 4)
 
         expectedSources = [(0, Color.Red), (0, Color.Blue), (0, Color.Black),
                            (1, Color.White)]
-        targetNumber = Azul.WallShape[0] + 1
+        targetNumber = AzulState.WallSize + 1
         expectedTargets = range(targetNumber)
 
         def assert_moves_match(sources, targets, exclude=None):
@@ -37,8 +37,8 @@ class TestAzul(unittest.TestCase):
         assert_moves_match(expectedSources, expectedTargets)
 
         # Now put something in the pool, we should get extra moves.
-        azul.bins[Azul.BinNumber, Color.Yellow] = 1
-        expectedSources.append((Azul.BinNumber, Color.Yellow))
+        azul.set_bin(AzulState.BinNumber, Color.Yellow, 1)
+        expectedSources.append((AzulState.BinNumber, Color.Yellow))
 
         assert_moves_match(expectedSources, expectedTargets)
 
@@ -49,7 +49,7 @@ class TestAzul(unittest.TestCase):
         assert_moves_match(expectedSources, expectedTargets)
 
         # Block a row of the wall, adding more invalid moves.
-        azul.players[0].wall[1, 0] = Azul.get_wall_slot_color(1, 0)
+        azul.players[0].wall[1, 0] = AzulState.get_wall_slot_color(1, 0)
         expectedTargets = range(1, targetNumber)
 
         assert_moves_match(expectedSources, expectedTargets, exclude=[Move(1, Color.White, 1)])
