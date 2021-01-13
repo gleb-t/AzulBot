@@ -3,29 +3,30 @@ import unittest
 
 import numpy as np
 
-from azulsim import AzulState, Color, Move
+from azulsim import Azul, AzulState, Color, Move
 
 
 class TestAzul(unittest.TestCase):
 
     def test_enumerate_moves_basic(self):
         # Init an empty board, and init with a few tiles.
-        azul = AzulState()
+        azul = Azul()
+        state = azul.get_init_state()
 
-        azul.set_bin(0, Color.Red, 2)
-        azul.set_bin(0, Color.Blue, 1)
-        azul.set_bin(0, Color.Black, 1)
+        state.set_bin(0, Color.Red, 2)
+        state.set_bin(0, Color.Blue, 1)
+        state.set_bin(0, Color.Black, 1)
 
-        azul.set_bin(1, Color.White, 4)
+        state.set_bin(1, Color.White, 4)
 
         expectedSources = [(0, Color.Red), (0, Color.Blue), (0, Color.Black),
                            (1, Color.White)]
-        targetNumber = AzulState.WallSize + 1
+        targetNumber = Azul.WallSize + 1
         expectedTargets = range(targetNumber)
 
         def assert_moves_match(sources, targets, exclude=None):
             exclude = exclude or []
-            output = list(azul.enumerate_moves())
+            output = list(azul.enumerate_moves(state))
             sourceTargetProduct = list(itertools.product(sources, targets))
             for expSource, expTarget in sourceTargetProduct:
                 move = Move(expSource[0], expSource[1], expTarget)
@@ -37,19 +38,19 @@ class TestAzul(unittest.TestCase):
         assert_moves_match(expectedSources, expectedTargets)
 
         # Now put something in the pool, we should get extra moves.
-        azul.set_bin(AzulState.BinNumber, Color.Yellow, 1)
-        expectedSources.append((AzulState.BinNumber, Color.Yellow))
+        state.set_bin(Azul.BinNumber, Color.Yellow, 1)
+        expectedSources.append((Azul.BinNumber, Color.Yellow))
 
         assert_moves_match(expectedSources, expectedTargets)
 
         # Fill up one of the queues, some moves should become invalid.
-        azul.players[0].set_queue(0, Color.White, 1)
+        state.players[0].set_queue(0, Color.White, 1)
         expectedTargets = range(1, targetNumber)
 
         assert_moves_match(expectedSources, expectedTargets)
 
         # Block a row of the wall, adding more invalid moves.
-        azul.players[0].set_wall(1, 0, AzulState.get_wall_slot_color(1, 0))
+        state.players[0].set_wall(1, 0, Azul.get_wall_slot_color(1, 0))
         expectedTargets = range(1, targetNumber)
 
         assert_moves_match(expectedSources, expectedTargets, exclude=[Move(1, Color.White, 1)])

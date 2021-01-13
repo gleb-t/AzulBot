@@ -30,6 +30,18 @@ class PlayerState:
 
 
 class AzulState:
+    bag: List[int]
+    bins: List[List[int]]
+    players: List[PlayerState]
+
+    nextPlayer: int
+    firstPlayer: int
+    wasPoolTouched: bool
+
+    def set_bin(self, binIndex: int, color: Color, count: int): ...
+
+
+class Azul:
     ColorNumber: int
     TileNumber: int
     PlayerNumber: int
@@ -43,16 +55,7 @@ class AzulState:
     ScorePerColumn: int
     ScorePerColor: int
 
-    bag: List[int]
-    bins: List[List[int]]
-    players: List[PlayerState]
-
-    nextPlayer: int
-    firstPlayer: int
-    wasPoolTouched: bool
-
-    def set_bin(self, binIndex: int, color: Color, count: int): ...
-    def enumerate_moves(self) -> List[Move]: ...
+    def enumerate_moves(self, state: AzulState) -> List[Move]: ...
 
     @staticmethod
     def get_wall_slot_color(iRow: int, iCol: int) -> Color: ...

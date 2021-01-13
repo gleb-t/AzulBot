@@ -16,9 +16,9 @@ inline size_t hash(size_t seed, T const& v)
 }
 
 
-PYBIND11_MODULE(azulsim, m) 
+PYBIND11_MODULE(azulcpp, m) 
 {
-    m.doc() = "azulsim";
+    m.doc() = "azulcpp";
 
     py::enum_<Color>(m, "Color")
         .value("Empty", Color::Empty)
@@ -54,17 +54,8 @@ PYBIND11_MODULE(azulsim, m)
         .def("set_wall", &PlayerState::set_wall)
         .def("set_queue", &PlayerState::set_queue);
 
-
     py::class_<AzulState>(m, "AzulState")
         .def(py::init())
-        .def_readonly_static("ColorNumber", &AzulState::ColorNumber)
-        .def_readonly_static("TileNumber", &AzulState::TileNumber)
-        .def_readonly_static("PlayerNumber", &AzulState::PlayerNumber)
-        .def_readonly_static("BinNumber", &AzulState::BinNumber)
-        .def_readonly_static("BinSize", &AzulState::BinSize)
-        .def_readonly_static("WallSize", &AzulState::WallSize)
-        .def_readonly_static("FloorSize", &AzulState::FloorSize)
-        .def_readonly_static("FloorScores", &AzulState::FloorScores)
 
         .def_readwrite("bag", &AzulState::bag)
         .def_readwrite("bins", &AzulState::bins)
@@ -73,8 +64,21 @@ PYBIND11_MODULE(azulsim, m)
         .def_readwrite("firstPlayer", &AzulState::firstPlayer)
         .def_readwrite("poolWasTouched", &AzulState::poolWasTouched)
 
-        .def("set_bin", &AzulState::set_bin)
-        .def("enumerate_moves", &AzulState::enumerate_moves)
-        .def_static("get_wall_slot_color", &AzulState::get_wall_slot_color);
+        .def("set_bin", &AzulState::set_bin);
+
+
+    py::class_<Azul>(m, "Azul")
+        .def(py::init())
+        .def_readonly_static("ColorNumber", &Azul::ColorNumber)
+        .def_readonly_static("TileNumber", &Azul::TileNumber)
+        .def_readonly_static("PlayerNumber", &Azul::PlayerNumber)
+        .def_readonly_static("BinNumber", &Azul::BinNumber)
+        .def_readonly_static("BinSize", &Azul::BinSize)
+        .def_readonly_static("WallSize", &Azul::WallSize)
+        .def_readonly_static("FloorSize", &Azul::FloorSize)
+        .def_readonly_static("FloorScores", &Azul::FloorScores)
+
+        .def("enumerate_moves", &Azul::enumerate_moves)
+        .def_static("get_wall_slot_color", &Azul::get_wall_slot_color);
 }
 

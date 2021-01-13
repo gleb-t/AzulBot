@@ -19,10 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Azul.cpp" />
     <ClCompile Include="azulsim.cpp" />
     <ClCompile Include="AzulState.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Azul.h" />
     <ClInclude Include="AzulState.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -111,7 +113,7 @@
       <AdditionalLibraryDirectories>$(PythonPath)libs;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)..\azulsim.pyd"</Command>
+      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)..\azulcpp.pyd"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -135,7 +137,7 @@
       <AdditionalLibraryDirectories>$(PythonPath)libs;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)..\azulsim.pyd"</Command>
+      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)..\azulcpp.pyd"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -155,7 +157,7 @@
       <AdditionalLibraryDirectories>$(PythonPath)libs;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)..\azulsim.pyd"</Command>
+      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)..\azulcpp.pyd"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -179,7 +181,7 @@
       <AdditionalLibraryDirectories>$(PythonPath)libs;</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)..\azulsim.pyd"</Command>
+      <Command>copy /Y "$(TargetPath)" "$(SolutionDir)..\azulcpp.pyd"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

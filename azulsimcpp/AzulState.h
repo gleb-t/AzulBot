@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-static const uint8_t WallSize = 5;
+#include "Azul.h"
 
 
 enum class Color : uint8_t
@@ -20,8 +20,8 @@ enum class Color : uint8_t
 
 struct PlayerState
 {
-    std::array<std::array<Color, WallSize>, WallSize> wall = {};
-    std::array<std::array<uint8_t, 2>, WallSize> queue = {};
+    std::array<std::array<Color, Azul::WallSize>, Azul::WallSize> wall = {};
+    std::array<std::array<uint8_t, 2>, Azul::WallSize> queue = {};
     uint8_t floorCount = 0;
     uint32_t score = 0;
 
@@ -53,42 +53,23 @@ struct Move
 };
 
 
-class AzulState
+struct AzulState
 {
-public:
-    static const uint8_t ColorNumber = 5;
-    static const uint8_t TileNumber = 20;
-    static const uint8_t PlayerNumber = 2;
-    static const uint8_t BinNumber = 5;
-    static const uint8_t BinSize = 4;
-    static const uint8_t WallSize = WallSize;
-    static const uint8_t FloorSize = 7;
-    static const std::array<uint8_t, FloorSize> FloorScores;
+    std::array<uint8_t, Azul::ColorNumber + 1> bag = {};
+    std::array<std::array<uint8_t, Azul::ColorNumber + 1>, Azul::BinNumber + 1> bins = {};
 
-    static const uint8_t ScorePerRow;
-    static const uint8_t ScorePerColumn;
-    static const uint8_t ScorePerColor;
-
-    std::array<uint8_t, ColorNumber + 1> bag = {};
-    std::array<std::array<uint8_t, ColorNumber + 1>, BinNumber + 1> bins = {};
-
-    std::array<PlayerState, PlayerNumber> players = {};
+    std::array<PlayerState, Azul::PlayerNumber> players = {};
 
     uint8_t nextPlayer{ 0 };
     uint8_t firstPlayer{ 0 };
     bool poolWasTouched{ false };
 
-    AzulState();
+    AzulState() = default;
+
 
     void set_bin(size_t binIndex, Color color, uint8_t count)
     {
         bins[binIndex][static_cast<uint8_t>(color)] = count;
     }
 
-    std::vector<Move> enumerate_moves();
-
-    static Color get_wall_slot_color(uint8_t rowIndex, uint8_t colIndex)
-    {
-        return static_cast<Color>((colIndex - rowIndex + ColorNumber) % ColorNumber + 1);
-    }
 };
