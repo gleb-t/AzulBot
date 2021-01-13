@@ -1,7 +1,7 @@
 from typing import *
 
 from azulcpp import AzulState as AzulStateCpp, Azul as AzulCpp
-from azulcpp import Color, Move
+from azulcpp import Color, Move, MoveOutcome
 
 
 class AzulState(AzulStateCpp):

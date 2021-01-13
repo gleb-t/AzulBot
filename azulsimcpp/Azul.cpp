@@ -1,5 +1,7 @@
 #include "Azul.h"
 #include <algorithm>
+#include <stdexcept>
+
 #include "AzulState.h"
 
 const std::array<uint8_t, Azul::FloorSize> Azul::FloorScores = { 1, 1, 2, 2, 2, 3, 3 };
@@ -45,4 +47,88 @@ std::vector<Move> Azul::enumerate_moves(const AzulState& state) const
     }
 
     return moves;
+}
+
+MoveOutcome Azul::apply_move(const AzulState& state, const Move& move) const
+{
+    AzulState next{state};
+    auto& player = next.players[state.nextPlayer];
+    const uint8_t tilesTaken = state.bins[move.sourceBin][static_cast<size_t>(move.color)];
+
+    if (tilesTaken == 0)
+        throw std::invalid_argument{"Not allowed to take zero tiles."};
+
+    // Update who goes first next round (changes when the pool is touched for the first time).
+    if (move.sourceBin == Azul::BinNumber)
+    {
+        const bool becomeFirstPlayer = !state.poolWasTouched;
+        next.poolWasTouched = true;
+        if (becomeFirstPlayer)
+        {
+            player.floorCount++;
+            next.firstPlayer = state.nextPlayer;
+        }
+    }
+
+    // Pass the turn to the next player.
+    next.nextPlayer = (state.nextPlayer + 1) % Azul::PlayerNumber;
+
+    // Take away the tiles of the moved color.
+    next.bins[move.sourceBin][static_cast<size_t>(move.color)] = 0;
+
+    // If the move is to take tiles from a bin, then move the rest into the pool.
+    if (move.sourceBin < Azul::BinNumber)
+    {
+        for (size_t iColor = 0; iColor < next.bins[move.sourceBin].size(); iColor++)
+        {
+            next.bins[Azul::BinNumber][iColor] += next.bins[move.sourceBin][iColor];
+            next.bins[move.sourceBin][iColor] = 0;
+        }
+    }
+
+    if (move.targetQueue < Azul::WallSize)
+    {
+        // Place the tiles into the queue.
+        const int queueSize = move.targetQueue + 1;
+        const int queueCount = player.queue[move.targetQueue][1];
+        const int newCount = queueCount + tilesTaken;
+        // Put the tiles into the queue, move the leftovers onto the floor.
+        player.queue[move.targetQueue][0] = static_cast<uint8_t>(move.color);
+        player.queue[move.targetQueue][1] = static_cast<uint8_t>(std::min({ newCount, queueSize }));
+        player.floorCount += std::max({ newCount - queueSize, 0 });
+    }
+    else
+    {
+        // Place tiles onto the floor.
+        player.floorCount += tilesTaken;
+    }
+
+
+    return MoveOutcome{next, is_round_end(next), is_game_end(next)};
+}
+
+bool Azul::is_game_end(const AzulState& state) const
+{
+    for (const auto& player : state.players)
+    {
+        for (const auto& row : player.wall)
+        {
+            if (std::count_if(row.begin(), row.end(), 
+                              [](Color val) { return val != Color::Empty; }))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool Azul::is_round_end(const AzulState& state) const
+{
+    for (const auto& bin : state.bins)
+        if (!std::all_of(bin.begin(), bin.end(), [](uint8_t val) { return val == 0; }))
+            return false;
+
+    return true;
 }

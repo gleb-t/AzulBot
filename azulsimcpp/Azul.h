@@ -2,11 +2,14 @@
 #include <array>
 #include <cstdint>
 #include <vector>
+
 // #include "AzulState.h"
 
 struct AzulState;
 struct Move;
+struct MoveOutcome;
 enum class Color : uint8_t;
+
 
 class Azul
 {
@@ -27,6 +30,9 @@ public:
     Azul() = default;
 
     std::vector<Move> enumerate_moves(const AzulState& state) const;
+    MoveOutcome apply_move(const AzulState& state, const Move& move) const;
+    bool is_game_end(const AzulState& state) const;
+    bool is_round_end(const AzulState& state) const;
 
     static Color get_wall_slot_color(uint8_t rowIndex, uint8_t colIndex)
     {

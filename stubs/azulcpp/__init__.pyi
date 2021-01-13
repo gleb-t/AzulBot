@@ -36,9 +36,16 @@ class AzulState:
 
     nextPlayer: int
     firstPlayer: int
-    wasPoolTouched: bool
+    poolWasTouched: bool
 
+    def copy(self) -> AzulState: ...
     def set_bin(self, binIndex: int, color: Color, count: int): ...
+
+
+class MoveOutcome:
+    state: AzulState
+    isRandom: bool
+    isEnd: bool
 
 
 class Azul:
@@ -56,6 +63,7 @@ class Azul:
     ScorePerColor: int
 
     def enumerate_moves(self, state: AzulState) -> List[Move]: ...
+    def apply_move(self, state: AzulState, move: Move) -> MoveOutcome: ...
 
     @staticmethod
     def get_wall_slot_color(iRow: int, iCol: int) -> Color: ...

@@ -66,10 +66,29 @@ struct AzulState
 
     AzulState() = default;
 
+    AzulState copy() const
+    {
+        return *this;
+    }
 
     void set_bin(size_t binIndex, Color color, uint8_t count)
     {
         bins[binIndex][static_cast<uint8_t>(color)] = count;
     }
 
+};
+
+struct MoveOutcome
+{
+    AzulState state;
+    bool isRandom;
+    bool isEnd;
+
+
+    MoveOutcome(const AzulState& state, bool isRandom, bool isEnd)
+        : state(state),
+          isRandom(isRandom),
+          isEnd(isEnd)
+    {
+    }
 };

@@ -64,7 +64,14 @@ PYBIND11_MODULE(azulcpp, m)
         .def_readwrite("firstPlayer", &AzulState::firstPlayer)
         .def_readwrite("poolWasTouched", &AzulState::poolWasTouched)
 
+        .def("copy", &AzulState::copy)
         .def("set_bin", &AzulState::set_bin);
+
+    py::class_<MoveOutcome>(m, "MoveOutcome")
+        .def(py::init<const AzulState&, bool, bool>())
+        .def_readwrite("state", &MoveOutcome::state)
+        .def_readwrite("isRandom", &MoveOutcome::isRandom)
+        .def_readwrite("isEnd", &MoveOutcome::isEnd);
 
 
     py::class_<Azul>(m, "Azul")
@@ -79,6 +86,7 @@ PYBIND11_MODULE(azulcpp, m)
         .def_readonly_static("FloorScores", &Azul::FloorScores)
 
         .def("enumerate_moves", &Azul::enumerate_moves)
+        .def("apply_move", &Azul::apply_move)
         .def_static("get_wall_slot_color", &Azul::get_wall_slot_color);
 }
 

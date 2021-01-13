@@ -55,74 +55,75 @@ class TestAzul(unittest.TestCase):
 
         assert_moves_match(expectedSources, expectedTargets, exclude=[Move(1, Color.White, 1)])
 
-    # def test_apply_move_sequence(self):
-    #     # This case is taken from the rulebook.
-    #     azul = Azul()
-    #
-    #     azul.bins[0, Color.Yellow] = 1
-    #     azul.bins[0, Color.Black] = 2
-    #     azul.bins[0, Color.White] = 1
-    #
-    #     azul.bins[1, Color.Yellow] = 1
-    #     azul.bins[1, Color.Red] = 3
-    #
-    #     azul.firstPlayer = 1  # We will change it and check later.
-    #
-    #     azul = azul.apply_move(Move(0, Color.Black, 1, )).state
-    #
-    #     # The pool should hold the leftovers.
-    #     np.testing.assert_equal(azul.bins[-1], [0, 0, 1, 0, 0, 1])  # See 'Color'.
-    #     # The bin should be empty
-    #     np.testing.assert_equal(azul.bins[0], 0)
-    #     # The other bin shouldn't change.
-    #     np.testing.assert_equal(azul.bins[1], [0, 0, 1, 3, 0, 0])
-    #
-    #     # The queue should only hold black.
-    #     np.testing.assert_equal(azul.players[0].queue[1], [Color.Black, 2])
-    #     for i, q in enumerate(azul.players[0].queue):
-    #         if i != 1:
-    #             np.testing.assert_equal(q, [0, 0])
-    #
-    #     # Nothing should be on the floor.
-    #     self.assertEqual(azul.players[0].floorCount, 0)
-    #     # The wall shouldn't be affected.
-    #     self.assertEqual(np.count_nonzero(azul.players[0].wall), 0)
-    #     # Player two shouldn't be affected.
-    #     self.assertEqual(np.count_nonzero(azul.players[1].queue), 0)
-    #     # Next player is tobe updated.
-    #     self.assertEqual(azul.nextPlayer, 1)
-    #
-    #     # Make a few more moves.
-    #     azul = azul.apply_move(Move(1, Color.Yellow, 2, )).state
-    #     azul = azul.apply_move(Move(Azul.BinNumber, Color.Red, 3)).state
-    #
-    #     # Check the pool.
-    #     np.testing.assert_equal(azul.bins[-1], [0, 0, 1, 0, 0, 1])
-    #     self.assertEqual(azul.poolWasTouched, True)
-    #     # Check the first player queues.
-    #     np.testing.assert_equal(azul.players[0].queue[1], [Color.Black, 2])
-    #     np.testing.assert_equal(azul.players[0].queue[3], [Color.Red, 3])
-    #     for i, q in enumerate(azul.players[0].queue):
-    #         if i != 1 and i != 3:
-    #             np.testing.assert_equal(q, [0, 0])
-    #
-    #     # Check the second player queues.
-    #     np.testing.assert_equal(azul.players[1].queue[2], [Color.Yellow, 1])
-    #     for i, q in enumerate(azul.players[1].queue):
-    #         if i != 2:
-    #             np.testing.assert_equal(q, [0, 0])
-    #
-    #     # Check the floors.
-    #     self.assertEqual(azul.players[0].floorCount, 1)
-    #     self.assertEqual(azul.players[1].floorCount, 0)
-    #     # The wall shouldn't be affected.
-    #     self.assertEqual(np.count_nonzero(azul.players[0].wall), 0)
-    #     self.assertEqual(np.count_nonzero(azul.players[1].wall), 0)
-    #     # Check the next player.
-    #     self.assertEqual(azul.nextPlayer, 1)
-    #     # Check who goes first next round.
-    #     self.assertEqual(azul.firstPlayer, 0)
-    #
+    def test_apply_move_sequence(self):
+        # This case is taken from the rulebook.
+        azul = Azul()
+        state = azul.get_init_state()
+
+        state.set_bin(0, Color.Yellow, 1)
+        state.set_bin(0, Color.Black, 2)
+        state.set_bin(0, Color.White, 1)
+
+        state.set_bin(1, Color.Yellow, 1)
+        state.set_bin(1, Color.Red, 3)
+
+        state.firstPlayer = 1  # We will change it and check later.
+
+        state = azul.apply_move(state, Move(0, Color.Black, 1, )).state
+
+        # The pool should hold the leftovers.
+        self.assertEqual(state.bins[-1], [0, 0, 1, 0, 0, 1])  # See 'Color'.
+        # The bin should be empty
+        self.assertEqual(state.bins[0], [0] * (Azul.ColorNumber + 1))
+        # The other bin shouldn't change.
+        self.assertEqual(state.bins[1], [0, 0, 1, 3, 0, 0])
+
+        # The queue should only hold black.
+        self.assertEqual(state.players[0].queue[1], [int(Color.Black), 2])
+        for i, q in enumerate(state.players[0].queue):
+            if i != 1:
+                self.assertEqual(q, [0, 0])
+
+        # Nothing should be on the floor.
+        self.assertEqual(state.players[0].floorCount, 0)
+        # The wall shouldn't be affected.
+        self.assertEqual(np.count_nonzero(np.array(state.players[0].wall, dtype=np.int32)), 0)
+        # Player two shouldn't be affected.
+        self.assertEqual(np.count_nonzero(state.players[1].queue), 0)
+        # Next player is tobe updated.
+        self.assertEqual(state.nextPlayer, 1)
+
+        # Make a few more moves.
+        state = azul.apply_move(state, Move(1, Color.Yellow, 2, )).state
+        state = azul.apply_move(state, Move(Azul.BinNumber, Color.Red, 3)).state
+
+        # Check the pool.
+        self.assertEqual(state.bins[-1], [0, 0, 1, 0, 0, 1])
+        self.assertEqual(state.poolWasTouched, True)
+        # Check the first player queues.
+        self.assertEqual(state.players[0].queue[1], [int(Color.Black), 2])
+        self.assertEqual(state.players[0].queue[3], [int(Color.Red), 3])
+        for i, q in enumerate(state.players[0].queue):
+            if i != 1 and i != 3:
+                self.assertEqual(q, [0, 0])
+
+        # Check the second player queues.
+        self.assertEqual(state.players[1].queue[2], [int(Color.Yellow), 1])
+        for i, q in enumerate(state.players[1].queue):
+            if i != 2:
+                self.assertEqual(q, [0, 0])
+
+        # Check the floors.
+        self.assertEqual(state.players[0].floorCount, 1)
+        self.assertEqual(state.players[1].floorCount, 0)
+        # The wall shouldn't be affected.
+        self.assertEqual(np.count_nonzero(np.array(state.players[0].wall, dtype=np.int32)), 0)
+        self.assertEqual(np.count_nonzero(np.array(state.players[1].wall, dtype=np.int32)), 0)
+        # Check the next player.
+        self.assertEqual(state.nextPlayer, 1)
+        # Check who goes first next round.
+        self.assertEqual(state.firstPlayer, 0)
+
     # def test_score_round(self):
     #
     #     azul = Azul()
