@@ -86,12 +86,17 @@ PYBIND11_MODULE(azulcpp, m)
         .def_readonly_static("WallSize", &Azul::WallSize)
         .def_readonly_static("FloorSize", &Azul::FloorSize)
         .def_readonly_static("FloorScores", &Azul::FloorScores)
+        .def_readonly_static("ScorePerRow", &Azul::ScorePerRow)
+        .def_readonly_static("ScorePerColumn", &Azul::ScorePerColumn)
+        .def_readonly_static("ScorePerColor", &Azul::ScorePerColor)
 
         .def("enumerate_moves", &Azul::enumerate_moves)
         .def("apply_move", &Azul::apply_move)
         .def("is_game_end", &Azul::is_game_end)
 
         .def("deal_round", &Azul::deal_round, py::arg("state"), py::arg("fixedSampled") = std::vector<Color>{})
+        .def("score_round", &Azul::score_round)
+        .def("score_game", &Azul::score_game)
         .def("_refill_bag", &Azul::_refill_bag)
         .def_static("get_wall_slot_color", &Azul::get_wall_slot_color);
 }

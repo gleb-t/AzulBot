@@ -124,38 +124,42 @@ class TestAzul(unittest.TestCase):
         # Check who goes first next round.
         self.assertEqual(state.firstPlayer, 0)
 
-    # def test_score_round(self):
-    #
-    #     azul = Azul()
-    #
-    #     azul.players[0].wall[0, 3] = Color.Black
-    #     azul.players[0].wall[1, 0:3] = (Color.White, Color.Blue, Color.Yellow)
-    #     azul.players[0].queue[0] = (Color.White, 1)  # Scores 2.
-    #     azul.players[0].queue[1] = (Color.Red, 2)    # Scores 6.
-    #     azul.players[0].queue[2] = (Color.Black, 3)  # Scores 2.
-    #     azul.players[0].queue[3] = (Color.Red, 3)    # Scores 0.
-    #     azul.players[0].queue[4] = (Color.Blue, 5)   # Scores 1.
-    #     azul.players[0].floorCount = 3
-    #
-    #     azul.players[1].wall[3, :] = (Color.Red, Color.Black, Color.Empty, Color.Blue, Color.Yellow)
-    #     azul.players[1].wall[:, 2] = (Color.Red, Color.Yellow, Color.Blue, Color.Empty, Color.Black)
-    #     azul.players[1].queue[0] = (Color.Yellow, 1)  # Scores 2.
-    #     azul.players[1].queue[3] = (Color.White, 4)   # Scores 10
-    #     azul.players[1].floorCount = 1
-    #
-    #     azul.score_round()
-    #
-    #     self.assertEqual(azul.players[0].score, 7)
-    #     self.assertEqual(azul.players[1].score, 11)
-    #
-    #     np.testing.assert_equal(azul.players[0].queue[0:3], 0)
-    #     np.testing.assert_equal(azul.players[0].queue[3], [Color.Red, 3])
-    #     np.testing.assert_equal(azul.players[0].queue[4], 0)
-    #
-    #     np.testing.assert_equal(azul.players[1].queue, 0)
-    #
-    #     self.assertEqual(azul.players[0].floorCount, 0)
-    #     self.assertEqual(azul.players[1].floorCount, 0)
+    def test_score_round(self):
+
+        azul = Azul()
+        state = azul.get_init_state()
+
+        state.players[0].set_wall(0, 3, Color.Black)
+        state.players[0].set_wall(1, 0, Color.White)
+        state.players[0].set_wall(1, 1, Color.Blue)
+        state.players[0].set_wall(1, 2, Color.Yellow)
+        state.players[0].set_queue(0, Color.White, 1)  # Scores 2.
+        state.players[0].set_queue(1, Color.Red, 2)    # Scores 6.
+        state.players[0].set_queue(2, Color.Black, 3)  # Scores 2.
+        state.players[0].set_queue(3, Color.Red, 3)  # Scores 0.
+        state.players[0].set_queue(4, Color.Blue, 5)  # Scores 1.
+
+        state.players[0].floorCount = 3
+
+        state.players[1].set_wall_row(3, [Color.Red, Color.Black, Color.Empty, Color.Blue, Color.Yellow])
+        state.players[1].set_wall_col(2, [Color.Red, Color.Yellow, Color.Blue, Color.Empty, Color.Black])
+        state.players[1].set_queue(0, Color.Yellow, 1)  # Scores 2.
+        state.players[1].set_queue(3, Color.White, 4)   # Scores 10
+        state.players[1].floorCount = 1
+
+        state = azul.score_round(state)
+
+        self.assertEqual(state.players[0].score, 7)
+        self.assertEqual(state.players[1].score, 11)
+
+        self.assertEqual(state.players[0].queue[0:3], [[0, 0]] * 3)
+        self.assertEqual(state.players[0].queue[3], [int(Color.Red), 3])
+        self.assertEqual(state.players[0].queue[4], [0, 0])
+
+        self.assertEqual(state.players[1].queue, np.zeros_like(np.array(state.players[1].queue)).tolist())
+
+        self.assertEqual(state.players[0].floorCount, 0)
+        self.assertEqual(state.players[1].floorCount, 0)
 
     def test_deal_round_basic(self):
         azul = Azul()
@@ -234,17 +238,18 @@ class TestAzul(unittest.TestCase):
         state.players[1].set_wall_row(4, [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Blue])
         self.assertTrue(azul.is_game_end(state))
 
-    # def test_score_game(self):
-    #     azul = Azul()
-    #     # Fill the main diagonal (all blue), the first row and the first column.
-    #     for i in range(Azul.WallShape[0]):
-    #         azul.players[0].wall[i, i] = Azul.get_wall_slot_color(i, i)
-    #         azul.players[0].wall[i, 0] = Azul.get_wall_slot_color(i, 0)
-    #         azul.players[0].wall[0, i] = Azul.get_wall_slot_color(0, i)
-    #
-    #     azul.score_game()
-    #     self.assertEqual(azul.players[0].score, Azul.ScorePerRow + Azul.ScorePerColumn + Azul.ScorePerColor)
-    #
+    def test_score_game(self):
+        azul = Azul()
+        state = azul.get_init_state()
+        # Fill the main diagonal (all blue), the first row and the first column.
+        for i in range(Azul.WallSize):
+            state.players[0].set_wall(i, i, Azul.get_wall_slot_color(i, i))
+            state.players[0].set_wall(i, 0, Azul.get_wall_slot_color(i, 0))
+            state.players[0].set_wall(0, i, Azul.get_wall_slot_color(0, i))
+
+        state = azul.score_game(state)
+        self.assertEqual(state.players[0].score, Azul.ScorePerRow + Azul.ScorePerColumn + Azul.ScorePerColor)
+
     # def test_full_game(self):
     #     # Test a full recorded game.
     #     azul = Azul()

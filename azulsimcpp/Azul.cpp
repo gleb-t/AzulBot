@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <numeric>
 #include <cassert>
+#include <iostream>
 #include <iterator>
 #include <stdexcept>
 
@@ -113,10 +114,10 @@ MoveOutcome Azul::apply_move(const AzulState& state, const Move& move) const
 
 AzulState Azul::deal_round(const AzulState& state, const std::vector<Color>& fixedSample)
 {
-    AzulState next{state};
-
     if (!is_round_end(state))
         throw std::runtime_error{"Not allowed to deal a new round before the old has ended."};
+
+    AzulState next{ state };
 
     // Refill the bag using the discarded tiles, if necessary.
     const uint8_t sampleSize = Azul::BinNumber * Azul::BinSize;
@@ -161,6 +162,74 @@ AzulState Azul::deal_round(const AzulState& state, const std::vector<Color>& fix
 	// Prepare the first player flags.
     next.poolWasTouched = false;
     next.nextPlayer = next.firstPlayer;
+
+    return next;
+}
+
+AzulState Azul::score_round(const AzulState& state) const
+{
+    if (!is_round_end(state))
+        throw std::runtime_error("Not allowed to score the round before it has ended.");
+
+    AzulState next{state};
+
+    for (auto& player : next.players)
+    {
+        for (uint8_t iRow = 0; iRow < Azul::WallSize; iRow++)
+        {
+            const auto color = static_cast<Color>(player.queue[iRow][0]);
+            const uint8_t count = player.queue[iRow][1];
+            if (count == iRow + 1)
+            {
+                const uint8_t iCol = Azul::get_wall_column_by_color(iRow, color);
+                player.wall[iRow][iCol] = color;
+                player.queue[iRow][0] = static_cast<uint8_t>(Color::Empty);
+                player.queue[iRow][1] = 0;
+                player.score += Azul::get_tile_score(player.wall, iRow, iCol);
+            }
+        }
+
+        // Score the floor tiles.
+        const uint8_t floorCount = std::min({player.floorCount, Azul::FloorSize});
+        int newScore = player.score;
+        for (uint8_t i = 0; i < floorCount; i++)
+            newScore -= Azul::FloorScores[i];
+
+        player.score = std::max({0, newScore});
+        player.floorCount = 0;
+    }
+
+    return next;
+}
+
+AzulState Azul::score_game(const AzulState& state) const
+{
+    if (!is_game_end(state))
+        throw std::runtime_error("Cannot score the game before the end of the game.");
+
+    AzulState next{state};
+
+    for (auto& player : next.players)
+    {
+        // Score full rows.
+        for (const auto& row : player.wall)
+            if (std::count_if(row.begin(), row.end(), [](Color c) { return c != Color::Empty; }) == WallSize)
+                player.score += Azul::ScorePerRow;
+        // Score full columns.
+        for (uint8_t iCol = 0; iCol < WallSize; iCol++)
+            if (std::count_if(player.wall.begin(), player.wall.end(), 
+                              [iCol](const auto& row) { return row[iCol] != Color::Empty; }) == WallSize)
+                player.score += ScorePerColumn;
+        // Score full colors.
+        std::array<uint8_t, ColorNumber + 1> counts{};
+        for (const auto& row : player.wall)
+            for (Color color : row)
+                counts[static_cast<size_t>(color)] += 1;
+
+        // Don't forget to skip the empty color.
+        player.score += ScorePerColor * std::count_if(counts.begin() + 1, counts.end(), 
+                                                      [](uint8_t c) { return c == WallSize; });
+    }
 
     return next;
 }
@@ -211,4 +280,58 @@ bool Azul::is_round_end(const AzulState& state) const
             return false;
 
     return true;
+}
+
+uint32_t Azul::get_tile_score(std::array<std::array<Color, WallSize>, WallSize> wall, uint8_t iRow, uint8_t iCol)
+{
+    // Hardcore search direction, don't do anything fancy.
+    std::array<uint8_t, 4> neighbors{};
+    for (uint8_t iDir = 0; iDir < 4; iDir++)
+    {
+        int8_t posRow{static_cast<int8_t>(iRow)}, posCol{static_cast<int8_t>(iCol)};
+        int8_t nextPosRow{}, nextPosCol{};
+        while (true)
+        {
+            nextPosRow = posRow;
+            nextPosCol = posCol;
+            switch (iDir)
+            {
+            case 0:
+                nextPosRow += 1;
+                break;
+            case 1:
+                nextPosRow -= 1;
+                break;
+            case 2:
+                nextPosCol += 1;
+                break;
+            case 3:
+                nextPosCol -= 1;
+                break;
+            default:
+                throw std::runtime_error{"Unknown direction."};
+            }
+
+            if (nextPosRow < 0 or nextPosRow >= Azul::WallSize or
+                nextPosCol < 0 or nextPosCol >= Azul::WallSize or
+                wall[nextPosRow][nextPosCol] == Color::Empty)
+            {
+                break;
+            }
+
+            neighbors[iDir] += 1;
+            posRow = nextPosRow;
+            posCol = nextPosCol;
+        }
+    }
+
+    // Compute the total score based on the neighbor information.
+    uint8_t scoreRow = neighbors[0] + neighbors[1] + 1;
+    uint8_t scoreCol = neighbors[2] + neighbors[3] + 1;
+    scoreRow = scoreRow > 1 ? scoreRow : 0;
+    scoreCol = scoreCol > 1 ? scoreCol : 0;
+
+    const uint8_t score = scoreRow + scoreCol;
+
+    return score > 0 ? score : 1;
 }
