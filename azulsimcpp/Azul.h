@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <random>
 #include <cstdint>
 #include <vector>
 
@@ -31,6 +32,9 @@ public:
 
     std::vector<Move> enumerate_moves(const AzulState& state) const;
     MoveOutcome apply_move(const AzulState& state, const Move& move) const;
+    
+    AzulState deal_round(const AzulState& state, const std::vector<Color>& fixedSample = {});
+    void _refill_bag(AzulState& state) const;
     bool is_game_end(const AzulState& state) const;
     bool is_round_end(const AzulState& state) const;
 
@@ -38,4 +42,8 @@ public:
     {
         return static_cast<Color>((colIndex - rowIndex + Azul::ColorNumber) % Azul::ColorNumber + 1);
     }
+
+protected:
+
+    std::mt19937 _randomEngine{std::random_device{}()};
 };

@@ -52,6 +52,8 @@ PYBIND11_MODULE(azulcpp, m)
         .def_readwrite("score", &PlayerState::score)
 
         .def("set_wall", &PlayerState::set_wall)
+        .def("set_wall_row", &PlayerState::set_wall_row)
+        .def("set_wall_col", &PlayerState::set_wall_col)
         .def("set_queue", &PlayerState::set_queue);
 
     py::class_<AzulState>(m, "AzulState")
@@ -87,6 +89,10 @@ PYBIND11_MODULE(azulcpp, m)
 
         .def("enumerate_moves", &Azul::enumerate_moves)
         .def("apply_move", &Azul::apply_move)
+        .def("is_game_end", &Azul::is_game_end)
+
+        .def("deal_round", &Azul::deal_round, py::arg("state"), py::arg("fixedSampled") = std::vector<Color>{})
+        .def("_refill_bag", &Azul::_refill_bag)
         .def_static("get_wall_slot_color", &Azul::get_wall_slot_color);
 }
 

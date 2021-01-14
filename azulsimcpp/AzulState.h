@@ -29,6 +29,16 @@ struct PlayerState
     {
         wall[rowIndex][colIndex] = color;
     }
+    void set_wall_row(uint8_t rowIndex, std::array<Color, Azul::WallSize> colors)
+    {
+        wall[rowIndex] = colors;
+    }
+    void set_wall_col(uint8_t colIndex, std::array<Color, Azul::WallSize> colors)
+    {
+        for (size_t i = 0; i < wall.size(); i++)
+            wall[i][colIndex] = colors[i];
+    }
+	
     void set_queue(uint8_t queueIndex, Color color, uint8_t count)
     {
         queue[queueIndex][0] = static_cast<uint8_t>(color);

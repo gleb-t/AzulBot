@@ -156,77 +156,84 @@ class TestAzul(unittest.TestCase):
     #
     #     self.assertEqual(azul.players[0].floorCount, 0)
     #     self.assertEqual(azul.players[1].floorCount, 0)
-    #
-    # def test_deal_round_basic(self):
-    #     azul = Azul()
-    #
-    #     azul.firstPlayer = 1
-    #     azul.poolWasTouched = True
-    #
-    #     azul.deal_round()
-    #
-    #     self.assertEqual(azul.nextPlayer, 1)
-    #     self.assertEqual(azul.poolWasTouched, False)
-    #
-    #     for b in azul.bins[:-1]:
-    #         self.assertEqual(sum(b), Azul.BinSize)
-    #         self.assertEqual(b[Color.Empty], 0)
-    #
-    #     np.testing.assert_equal(azul.bins[-1], Color.Empty)
-    #
-    #     # Check that the total number of each color's tiles in all the bins
-    #     # is exactly what's missing from the bag.
-    #     for color, count in enumerate(np.sum(azul.bins, axis=0)):
-    #         if color == Color.Empty:
-    #             self.assertEqual(azul.bag[color], 0)
-    #         else:
-    #             self.assertEqual(azul.bag[color], Azul.TileNumber - count)
-    #
-    # def test_deal_round_one_color_left(self):
-    #     bag = np.zeros(Azul.ColorNumber + 1, dtype=np.uint8)
-    #     bag[Color.Blue] = Azul.TileNumber
-    #     azul = Azul(bag=bag)
-    #
-    #     azul.deal_round()
-    #
-    #     self.assertEqual(np.sum(azul.bins[:, Color.Blue]), Azul.TileNumber)
-    #     np.testing.assert_equal(azul.bag, 0)
-    #
-    # def test_refill_bag(self):
-    #     azul = Azul()
-    #
-    #     azul.players[0].wall[0] = [Color.Blue, Color.Yellow, Color.Red, Color.Empty, Color.Empty]
-    #     azul.players[0].wall[1] = [Color.Empty, Color.Blue, Color.Empty, Color.Empty, Color.Empty]
-    #     azul.players[1].queue[3] = [Color.Black, 2]
-    #
-    #     azul._refill_bag()
-    #
-    #     np.testing.assert_equal(azul.bag, [0, Azul.TileNumber - 2, Azul.TileNumber - 1,
-    #                                        Azul.TileNumber - 1, Azul.TileNumber - 2, Azul.TileNumber])
-    #
-    # def test_dealing_round_refills_bag(self):
-    #
-    #     azul = Azul()
-    #     azul.bag[...] = 0
-    #
-    #     azul.deal_round()
-    #
-    #     self.assertEqual(np.sum(azul.bag), Azul.ColorNumber * Azul.TileNumber - Azul.BinNumber * Azul.BinSize)
-    #
-    # def test_is_end_of_game(self):
-    #     azul = Azul()
-    #
-    #     self.assertFalse(azul.is_game_end())
-    #
-    #     azul.players[0].wall[4] = [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Empty]
-    #     self.assertFalse(azul.is_game_end())
-    #
-    #     azul.players[0].wall[:, 0] = [Color.Blue, Color.White, Color.Black, Color.Red, Color.Yellow]
-    #     self.assertFalse(azul.is_game_end())
-    #
-    #     azul.players[1].wall[4] = [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Blue]
-    #     self.assertTrue(azul.is_game_end())
-    #
+
+    def test_deal_round_basic(self):
+        azul = Azul()
+        state = azul.get_init_state()
+
+        state.firstPlayer = 1
+        state.poolWasTouched = True
+
+        state = azul.deal_round(state)
+
+        self.assertEqual(state.nextPlayer, 1)
+        self.assertEqual(state.poolWasTouched, False)
+
+        for b in state.bins[:-1]:
+            self.assertEqual(sum(b), Azul.BinSize)
+            self.assertEqual(b[Color.Empty], 0)
+
+        self.assertEqual(state.bins[-1], [int(Color.Empty)] * (Azul.ColorNumber + 1))
+
+        # Check that the total number of each color's tiles in all the bins
+        # is exactly what's missing from the bag.
+        for color, count in enumerate(np.sum(np.array(state.bins), axis=0)):
+            if Color(color) == Color.Empty:
+                self.assertEqual(state.bag[color], 0)
+            else:
+                self.assertEqual(state.bag[color], Azul.TileNumber - count)
+
+    def test_deal_round_one_color_left(self):
+        azul = Azul()
+        state = azul.get_init_state()
+
+        bag = np.zeros(Azul.ColorNumber + 1, dtype=np.uint8)
+        bag[Color.Blue] = Azul.TileNumber
+        state.bag = bag.tolist()
+
+        state = azul.deal_round(state)
+
+        self.assertEqual(np.sum(np.array(state.bins)[:, Color.Blue]), Azul.TileNumber)
+        self.assertEqual(state.bag, [0] * (Azul.ColorNumber + 1))
+
+    def test_refill_bag(self):
+        azul = Azul()
+        state = azul.get_init_state()
+
+        state.players[0].set_wall_row(0, [Color.Blue, Color.Yellow, Color.Red, Color.Empty, Color.Empty])
+        state.players[0].set_wall_row(1, [Color.Empty, Color.Blue, Color.Empty, Color.Empty, Color.Empty])
+        state.players[1].set_queue(3, Color.Black, 2)
+
+        azul._refill_bag(state)
+
+        self.assertEqual(state.bag, [0, Azul.TileNumber - 2, Azul.TileNumber - 1,
+                                     Azul.TileNumber - 1, Azul.TileNumber - 2, Azul.TileNumber])
+
+    def test_dealing_round_refills_bag(self):
+
+        azul = Azul()
+        state = azul.get_init_state()
+        state.bag = np.zeros_like(np.array(state.bag)).tolist()
+
+        state = azul.deal_round(state)
+
+        self.assertEqual(np.sum(np.array(state.bag)), Azul.ColorNumber * Azul.TileNumber - Azul.BinNumber * Azul.BinSize)
+
+    def test_is_end_of_game(self):
+        azul = Azul()
+        state = azul.get_init_state()
+
+        self.assertFalse(azul.is_game_end(state))
+
+        state.players[0].set_wall_row(4, [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Empty])
+        self.assertFalse(azul.is_game_end(state))
+
+        state.players[0].set_wall_col(0, [Color.Blue, Color.White, Color.Black, Color.Red, Color.Yellow])
+        self.assertFalse(azul.is_game_end(state))
+
+        state.players[1].set_wall_row(4, [Color.Yellow, Color.Red, Color.Black, Color.White, Color.Blue])
+        self.assertTrue(azul.is_game_end(state))
+
     # def test_score_game(self):
     #     azul = Azul()
     #     # Fill the main diagonal (all blue), the first row and the first column.

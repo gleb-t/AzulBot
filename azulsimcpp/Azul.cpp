@@ -1,5 +1,8 @@
 #include "Azul.h"
 #include <algorithm>
+#include <numeric>
+#include <cassert>
+#include <iterator>
 #include <stdexcept>
 
 #include "AzulState.h"
@@ -103,8 +106,85 @@ MoveOutcome Azul::apply_move(const AzulState& state, const Move& move) const
         player.floorCount += tilesTaken;
     }
 
-
+    // todo Maybe we should be returning an rvalue. Check pybind return policies.
     return MoveOutcome{next, is_round_end(next), is_game_end(next)};
+}
+
+
+AzulState Azul::deal_round(const AzulState& state, const std::vector<Color>& fixedSample)
+{
+    AzulState next{state};
+
+    if (!is_round_end(state))
+        throw std::runtime_error{"Not allowed to deal a new round before the old has ended."};
+
+    // Refill the bag using the discarded tiles, if necessary.
+    const uint8_t sampleSize = Azul::BinNumber * Azul::BinSize;
+    const uint8_t bagCount = std::accumulate(next.bag.begin(), next.bag.end(), decltype(next.bag)::value_type{0});
+    if (bagCount < sampleSize)
+    {
+        _refill_bag(next);
+    }
+
+    // Randomly sample the bag to get the tiles for this round.
+    std::vector<Color> sample{};
+    if (fixedSample.empty())
+    {
+        std::vector<Color> population{};
+        for (size_t iColor = 0; iColor < next.bag.size(); iColor++)
+            for (uint8_t i = 0; i < next.bag[iColor]; i++)
+                population.push_back(static_cast<Color>(iColor));
+
+    	
+        std::sample(population.begin(), population.end(), std::back_inserter(sample), sampleSize, _randomEngine);
+    }
+    else
+    {
+        assert(fixedSample.size() == sampleSize);
+        sample = fixedSample;
+    }
+
+	// Distribute the sampled tiles among the bins.
+    for (auto& bin : next.bins)
+        std::fill(bin.begin(), bin.end(), 0);
+
+	for (size_t iTile = 0; iTile < sample.size(); iTile++)
+	{
+        Color color = sample[iTile];
+        const auto binIndex = static_cast<size_t>(iTile / Azul::BinSize);
+        next.bins[binIndex][static_cast<size_t>(color)] += 1;
+
+        // Keep track of which tiles are left in the bag.
+        next.bag[static_cast<size_t>(color)] -= 1;
+	}
+
+	// Prepare the first player flags.
+    next.poolWasTouched = false;
+    next.nextPlayer = next.firstPlayer;
+
+    return next;
+}
+
+void Azul::_refill_bag(AzulState& state) const
+{
+    // First, count all the tiles that lie on the board, they won't be redrawn.
+    std::array<uint8_t, Azul::ColorNumber + 1> missingTiles{};
+    for (const PlayerState& player : state.players)
+    {
+        for (const auto& queueRow : player.queue)
+            missingTiles[static_cast<size_t>(queueRow[0])] += queueRow[1];
+
+        for (const auto& wallRow : player.wall)
+            for (Color color : wallRow)
+                missingTiles[static_cast<size_t>(color)] += 1;
+    }
+
+    // The rest are the discarded tiles that return back into the bag.
+    for (size_t iColor = 0; iColor < missingTiles.size(); iColor++)
+        if (static_cast<Color>(iColor) != Color::Empty)
+            state.bag[iColor] = Azul::TileNumber - missingTiles[iColor];
+
+    assert(state.bag[static_cast<size_t>(Color::Empty)] == 0);
 }
 
 bool Azul::is_game_end(const AzulState& state) const
@@ -114,7 +194,7 @@ bool Azul::is_game_end(const AzulState& state) const
         for (const auto& row : player.wall)
         {
             if (std::count_if(row.begin(), row.end(), 
-                              [](Color val) { return val != Color::Empty; }))
+                              [](Color val) { return val != Color::Empty; }) == Azul::WallSize)
             {
                 return true;
             }
