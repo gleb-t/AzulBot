@@ -5,7 +5,7 @@ from typing import *
 import numpy as np
 from numba import jit
 
-from azulpy.game import GameState, TMove, MoveOutcome
+from .game import GameState, TMove, MoveOutcome
 
 T = TypeVar('T')
 
