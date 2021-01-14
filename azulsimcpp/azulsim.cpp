@@ -3,17 +3,11 @@
 #include <pybind11/stl.h>
 
 #include "AzulState.h"
+#include "utils.h"
 
 namespace py = pybind11;
 using namespace pybind11::literals;
 
-// Hash a value and combine with another hash.
-// From https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
-template <class T>
-inline size_t hash(size_t seed, T const& v)
-{
-    return seed ^ (std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-}
 
 
 PYBIND11_MODULE(azulcpp, m) 
@@ -37,7 +31,7 @@ PYBIND11_MODULE(azulcpp, m)
         })
         .def("__hash__", [](const Move& m)
         {
-            return hash(hash(hash(size_t{ 0 }, m.sourceBin), static_cast<uint8_t>(m.color)), m.targetQueue);
+            return hash_combine(hash_combine(hash_combine(size_t{ 0 }, m.sourceBin), static_cast<uint8_t>(m.color)), m.targetQueue);
         })
         .def("__eq__", [](const Move& m1, const Move& m2)
         {
@@ -54,7 +48,11 @@ PYBIND11_MODULE(azulcpp, m)
         .def("set_wall", &PlayerState::set_wall)
         .def("set_wall_row", &PlayerState::set_wall_row)
         .def("set_wall_col", &PlayerState::set_wall_col)
-        .def("set_queue", &PlayerState::set_queue);
+        .def("set_queue", &PlayerState::set_queue)
+
+        .def("__eq__", [](const PlayerState& p1, const PlayerState& p2) { return p1 == p2;})
+        .def("__hash__", &PlayerState::hash);
+
 
     py::class_<AzulState>(m, "AzulState")
         .def(py::init())
@@ -67,7 +65,9 @@ PYBIND11_MODULE(azulcpp, m)
         .def_readwrite("poolWasTouched", &AzulState::poolWasTouched)
 
         .def("copy", &AzulState::copy)
-        .def("set_bin", &AzulState::set_bin);
+        .def("set_bin", &AzulState::set_bin)
+        .def("__eq__", [](const AzulState& s1, const AzulState& s2) { return s1 == s2; })
+        .def("__hash__", &AzulState::hash);
 
     py::class_<MoveOutcome>(m, "MoveOutcome")
         .def(py::init<const AzulState&, bool, bool>())
@@ -93,6 +93,7 @@ PYBIND11_MODULE(azulcpp, m)
         .def("enumerate_moves", &Azul::enumerate_moves)
         .def("apply_move", &Azul::apply_move)
         .def("is_game_end", &Azul::is_game_end)
+        .def("is_round_end", &Azul::is_round_end)
 
         .def("deal_round", &Azul::deal_round, py::arg("state"), py::arg("fixedSampled") = std::vector<Color>{})
         .def("score_round", &Azul::score_round)

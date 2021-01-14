@@ -250,114 +250,121 @@ class TestAzul(unittest.TestCase):
         state = azul.score_game(state)
         self.assertEqual(state.players[0].score, Azul.ScorePerRow + Azul.ScorePerColumn + Azul.ScorePerColor)
 
-    # def test_full_game(self):
-    #     # Test a full recorded game.
-    #     azul = Azul()
-    #
-    #     tilesPerRoundRaw = [
-    #         'RWYYRYUURRWWKKYYWWUR',
-    #         'WWUUUURKKKRUYKRUKYYU',
-    #         'URYKUWYYURYYKKURWWYK',
-    #         'RKKWUUWWRRKUUKWWWKRR',
-    #         'KYYRRYWKYYUWWWKRYRKU'
-    #     ]
-    #
-    #     tilesPerRound = [list(map(Azul.str_to_color, tiles)) for tiles in tilesPerRoundRaw]
-    #
-    #     # Moves alternate between players 0 and 1 within a round.
-    #     # The game keeps track of which player goes first each round, we only specify the very first.
-    #     firstPlayer = 0
-    #     movesPerRoundRaw = [
-    #         [
-    #             '3K1', '4W3', '0Y3', '2W3',
-    #             '5R2', '5Y1', '5W0', '1R0',
-    #             '5U4', '5Y5'
-    #         ],
-    #         [
-    #             '4Y3', '2K4', '0U4', '1U2',
-    #             '3K0', '5Y0', '5R1', '5K4',
-    #             '5U2', '5W1'
-    #         ],
-    #         [
-    #                    '4K4', '2Y1', '5U2',
-    #             '1Y2', '0K0', '3R0', '5U1',
-    #             '5Y2', '5K3', '5W4', '5R5'
-    #         ],
-    #         [
-    #                    '3W2', '1W4', '2R4',
-    #             '5U3', '5K3', '0R5', '5W2',
-    #             '5K2', '4R1', '5K2', '5W0'
-    #         ],
-    #         [
-    #             '2U1', '4U0', '3W2', '5R4',
-    #             '5K3', '5Y2', '5W2', '1R4',
-    #             '5Y0', '5K1', '0K3', '5Y3',
-    #             '5R4', '5W5'
-    #         ]
-    #     ]
-    #
-    #     movesPerRound = [list(map(Move.from_str, moves)) for moves in movesPerRoundRaw]
-    #
-    #     scoresPerRound = [
-    #         [4, 3],
-    #         [19, 5],
-    #         [33, 16],
-    #         [45, 37],
-    #         [54, 55]
-    #     ]
-    #     finalScores = [70, 71]
-    #
-    #     # Simulate the game and check the score each round.
-    #     azul.nextPlayer = firstPlayer
-    #     for iRound, (tiles, moves, scores) in enumerate(zip(tilesPerRound, movesPerRound, scoresPerRound)):
-    #         azul.deal_round(fixedSample=tiles)
-    #
-    #         for move in moves:
-    #             azul = azul.apply_move(move).state
-    #
-    #         self.assertTrue(azul.is_round_end())
-    #         azul.score_round()
-    #
-    #         self.assertEqual([p.score for p in azul.players], scores)
-    #
-    #     azul.score_game()
-    #     self.assertEqual([p.score for p in azul.players], finalScores)
-    #
-    # def test_hash(self):
-    #     import copy
-    #
-    #     azul1 = Azul()
-    #     azul1.bins[1] = [0, 2, 3, 4, 5, 6]
-    #     azul1.players[0].wall[1, 1] = Azul.get_wall_slot_color(1, 1)
-    #
-    #     azul2 = copy.deepcopy(azul1)
-    #
-    #     self.assertEqual(azul1, azul2)
-    #     self.assertEqual(hash(azul1), hash(azul2))
-    #
-    #     azul2.bins[1, 1] = 5
-    #
-    #     self.assertNotEqual(azul1, azul2)
-    #     self.assertNotEqual(hash(azul1), hash(azul2))
-    #
-    #     azul2 = copy.deepcopy(azul1)
-    #     azul2.players[1].score = 1
-    #
-    #     self.assertNotEqual(azul1, azul2)
-    #     self.assertNotEqual(hash(azul1), hash(azul2))
-    #
-    #     azul2 = copy.deepcopy(azul1)
-    #     azul2.players[1].queue[0] = [1, 1]
-    #
-    #     self.assertNotEqual(azul1, azul2)
-    #     self.assertNotEqual(hash(azul1), hash(azul2))
-    #
-    #     # Trying using as keys in a dict. This shouldn't throw.
-    #     d1 = {azul1: 'a1', azul2: 'a2'}
-    #     d2 = copy.deepcopy(d1)
-    #
-    #     d1[azul1] = 'a1'
-    #     self.assertEqual(d1, d2)
+    def test_full_game(self):
+        # Test a full recorded game.
+        azul = Azul()
+        state = azul.get_init_state()
+
+        tilesPerRoundRaw = [
+            'RWYYRYUURRWWKKYYWWUR',
+            'WWUUUURKKKRUYKRUKYYU',
+            'URYKUWYYURYYKKURWWYK',
+            'RKKWUUWWRRKUUKWWWKRR',
+            'KYYRRYWKYYUWWWKRYRKU'
+        ]
+
+        tilesPerRound = [list(map(Azul.str_to_color, tiles)) for tiles in tilesPerRoundRaw]
+
+        # Moves alternate between players 0 and 1 within a round.
+        # The game keeps track of which player goes first each round, we only specify the very first.
+        firstPlayer = 0
+        movesPerRoundRaw = [
+            [
+                '3K1', '4W3', '0Y3', '2W3',
+                '5R2', '5Y1', '5W0', '1R0',
+                '5U4', '5Y5'
+            ],
+            [
+                '4Y3', '2K4', '0U4', '1U2',
+                '3K0', '5Y0', '5R1', '5K4',
+                '5U2', '5W1'
+            ],
+            [
+                       '4K4', '2Y1', '5U2',
+                '1Y2', '0K0', '3R0', '5U1',
+                '5Y2', '5K3', '5W4', '5R5'
+            ],
+            [
+                       '3W2', '1W4', '2R4',
+                '5U3', '5K3', '0R5', '5W2',
+                '5K2', '4R1', '5K2', '5W0'
+            ],
+            [
+                '2U1', '4U0', '3W2', '5R4',
+                '5K3', '5Y2', '5W2', '1R4',
+                '5Y0', '5K1', '0K3', '5Y3',
+                '5R4', '5W5'
+            ]
+        ]
+
+        movesPerRound = [list(map(Move.from_str, moves)) for moves in movesPerRoundRaw]
+
+        scoresPerRound = [
+            [4, 3],
+            [19, 5],
+            [33, 16],
+            [45, 37],
+            [54, 55]
+        ]
+        finalScores = [70, 71]
+
+        # Simulate the game and check the score each round.
+        state.nextPlayer = firstPlayer
+        for iRound, (tiles, moves, scores) in enumerate(zip(tilesPerRound, movesPerRound, scoresPerRound)):
+            state = azul.deal_round(state, tiles)
+
+            for move in moves:
+                state = azul.apply_move(state, move).state
+
+            self.assertTrue(azul.is_round_end(state))
+            state = azul.score_round(state)
+
+            self.assertEqual([p.score for p in state.players], scores)
+
+        state = azul.score_game(state)
+        self.assertEqual([p.score for p in state.players], finalScores)
+
+    def test_hash(self):
+        import copy
+        azul = Azul()
+
+        state1 = azul.get_init_state()
+        bins = state1.bins
+        bins[1] = [0, 2, 3, 4, 5, 6]
+        state1.bins = bins
+        state1.players[0].set_wall(1, 1, Azul.get_wall_slot_color(1, 1))
+
+        state2 = state1.copy()
+
+        self.assertEqual(state1, state2)
+        self.assertEqual(hash(state1), hash(state2))
+
+        state2.set_bin(1, Color.Blue, 5)
+
+        self.assertNotEqual(state1, state2)
+        self.assertNotEqual(hash(state1), hash(state2))
+
+        state2 = state1.copy()
+        state2.players[1].score = 1
+
+        self.assertNotEqual(state1, state2)
+        self.assertNotEqual(hash(state1), hash(state2))
+
+        state2 = state1.copy()
+        state2.players[1].set_queue(0, Color.Blue, 1)
+
+        self.assertNotEqual(state1, state2)
+        self.assertNotEqual(hash(state1), hash(state2))
+
+        # Trying using as keys in a dict. This shouldn't throw.
+        d1 = {state1: 'a1', state2: 'a2'}
+        d2 = copy.copy(d1)
+
+        d1[state1] = 'a1'
+        self.assertEqual(d1, d2)
+
+        d1[state2] = 'a3'
+        self.assertNotEqual(d1, d2)
 
 
 

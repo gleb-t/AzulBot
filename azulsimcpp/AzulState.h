@@ -44,6 +44,13 @@ struct PlayerState
         queue[queueIndex][0] = static_cast<uint8_t>(color);
         queue[queueIndex][1] = count;
     }
+
+    size_t hash() const;
+
+    bool operator==(const PlayerState& other) const
+    {
+        return wall == other.wall && queue == other.queue && floorCount == other.floorCount && score == other.score;
+    }
 };
 
 
@@ -86,6 +93,13 @@ struct AzulState
         bins[binIndex][static_cast<uint8_t>(color)] = count;
     }
 
+    size_t hash() const;
+
+    bool operator==(const AzulState& other) const
+    {
+        return bag == other.bag && bins == other.bins && players == other.players &&
+               nextPlayer == other.nextPlayer && firstPlayer == other.firstPlayer && poolWasTouched == other.poolWasTouched;
+    }
 };
 
 struct MoveOutcome

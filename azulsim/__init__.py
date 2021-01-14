@@ -1,2 +1,2 @@
-from .azul import Azul, AzulState
-from azulcpp import PlayerState, Move, MoveOutcome, Color
+from .azul import Azul, AzulState, Move
+from azulcpp import PlayerState, MoveOutcome, Color

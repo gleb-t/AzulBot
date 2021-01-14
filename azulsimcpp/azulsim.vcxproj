@@ -26,6 +26,7 @@
   <ItemGroup>
     <ClInclude Include="Azul.h" />
     <ClInclude Include="AzulState.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
