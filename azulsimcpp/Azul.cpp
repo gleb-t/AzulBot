@@ -111,6 +111,37 @@ MoveOutcome Azul::apply_move(const AzulState& state, const Move& move) const
     return MoveOutcome{next, is_round_end(next), is_game_end(next)};
 }
 
+AzulState Azul::playout(const AzulState& state, uint32_t maxRoundTimeout)
+{
+    AzulState curr{state};
+
+    uint32_t roundCount = 0;
+    while (!is_game_end(curr))
+    {
+        // We might get a game in the middle of a round, so we have to check.
+        if (is_round_end(curr))
+            curr = deal_round(curr);
+
+        while (!is_round_end(curr))
+        {
+            std::vector<Move> legalMoves = enumerate_moves(curr);
+            std::uniform_int_distribution<> uniform(0, static_cast<int>(legalMoves.size()) - 1);
+            const Move& move = legalMoves[uniform(_randomEngine)];
+            curr = apply_move(curr, move).state;
+        }
+
+        curr = score_round(curr);
+        roundCount += 1;
+
+        if (roundCount > maxRoundTimeout)
+            throw std::runtime_error("Timed out by exceeding the max round number.");
+    }
+
+    curr = score_game(curr);
+
+    return curr;
+}
+
 
 AzulState Azul::deal_round(const AzulState& state, const std::vector<Color>& fixedSample)
 {

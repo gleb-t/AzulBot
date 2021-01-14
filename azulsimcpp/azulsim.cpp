@@ -92,6 +92,7 @@ PYBIND11_MODULE(azulcpp, m)
 
         .def("enumerate_moves", &Azul::enumerate_moves)
         .def("apply_move", &Azul::apply_move)
+        .def("playout", &Azul::playout, py::arg("state"), py::arg("maxRoundTimeout") = 100)
         .def("is_game_end", &Azul::is_game_end)
         .def("is_round_end", &Azul::is_round_end)
 

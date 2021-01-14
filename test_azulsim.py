@@ -366,6 +366,15 @@ class TestAzul(unittest.TestCase):
         d1[state2] = 'a3'
         self.assertNotEqual(d1, d2)
 
+    def test_playout(self):
+        azul = Azul()
+        state = azul.get_init_state()
+
+        self.assertFalse(azul.is_game_end(state))
+
+        state = azul.playout(state)
+
+        self.assertTrue(azul.is_game_end(state))
 
 
 
