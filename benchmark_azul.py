@@ -3,18 +3,25 @@ from typing import *
 
 import numpy as np
 
-from azulbot.azul import Azul, Move
+from azulbot.azulsim import Azul, Move, AzulState
 from lib.StageTimer import StageTimer
 from mcts_bot import MctsBot
 
 
-def random_bot(azul: Azul) -> Move:
-    return random.choice(tuple(azul.enumerate_moves()))
+def build_random_bot():
+    azul = Azul()
+
+    def _bot(state: AzulState) -> Move:
+        return random.choice(tuple(azul.enumerate_moves(state)))
+
+    return _bot
 
 
 def build_mcts_bot(budget: int = 1000):
-    def _bot(azul: Azul):
-        mcts = MctsBot(azul, azul.nextPlayer)
+    azul = Azul()
+
+    def _bot(state: AzulState):
+        mcts = MctsBot(azul, state, state.nextPlayer)
         for _ in range(budget):
             mcts.step()
 
@@ -24,11 +31,12 @@ def build_mcts_bot(budget: int = 1000):
 
 
 def main():
-    gamesToPlay = 1
+    gamesToPlay = 10
     maxRoundsPerGame = 100
     mctsBudget = 10000
 
-    players = [random_bot, build_mcts_bot(mctsBudget)]
+    azul = Azul()
+    players = [build_random_bot(), build_mcts_bot(mctsBudget)]
     scores = []
     timePerMove = []
 
@@ -36,37 +44,37 @@ def main():
     for iGame in range(gamesToPlay):
         timer.start_pass()
 
-        azul = Azul()
+        state = azul.get_init_state()
 
         roundCount = 0
         moveCount = 0
         for _ in range(maxRoundsPerGame):
             timer.start_stage('deal')
-            azul.deal_round()
+            state = azul.deal_round(state)
 
-            while not azul.is_round_end():
+            while not azul.is_round_end(state):
                 timer.start_stage('decide')
-                move = players[azul.nextPlayer](azul)
+                move = players[state.nextPlayer](state)
                 timer.start_stage('move')
-                azul = azul.apply_move(move).state
-                moveCount += 1 if azul.nextPlayer == 1 else 0
+                state = azul.apply_move(state, move).state
+                moveCount += 1 if state.nextPlayer == 1 else 0
 
             timer.start_stage('score')
-            azul.score_round()
+            state = azul.score_round(state)
             roundCount += 1
 
-            if azul.is_game_end():
-                azul.score_game()
+            if azul.is_game_end(state):
+                state = azul.score_game(state)
                 break
 
         timer.end_stage()
 
-        if azul.is_game_end():
+        if azul.is_game_end(state):
             timer.end_pass()
             dur = timer.get_pass_duration()
-            scores.append([azul.players[0].score, azul.players[1].score])
+            scores.append([state.players[0].score, state.players[1].score])
             timePerMove.append(timer.get_pass_timings()['decide'] / moveCount)
-            print(f"Finished a game with scores {azul.players[0].score}:{azul.players[1].score}"
+            print(f"Finished a game with scores {state.players[0].score}:{state.players[1].score}"
                   f" in {roundCount} rounds and {dur:.2f} s.")
 
         else:

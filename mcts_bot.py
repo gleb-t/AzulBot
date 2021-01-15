@@ -3,12 +3,12 @@ import math
 import random
 from typing import *
 
-from azulbot import GameState, TMove
+from azulbot import Game, GameState, TMove
 
 
 class Node:
 
-    def __init__(self, state: GameState[TMove], move: Optional[TMove], parent: Optional['Node'],
+    def __init__(self, state: GameState, move: Optional[TMove], parent: Optional['Node'],
                  isRandom: bool = False):
         self.state = state
         self.move = move
@@ -24,8 +24,9 @@ class MctsBot:
 
     ExplorationWeight = 1 / 1.4142
 
-    def __init__(self, state: GameState[TMove], playerIndex: int):
+    def __init__(self, game: Game[GameState, TMove], state: GameState, playerIndex: int):
 
+        self.game = game
         self.root = Node(state.copy(), move=None, parent=None)
         self.playerIndex = playerIndex
 
@@ -41,24 +42,24 @@ class MctsBot:
 
         # If the node is followed by a stochastic state update, then just do a playout.
         # If the node represents a terminal state, we don't need to expand it.
-        if not node.isRandom and not node.state.is_game_end():
+        if not node.isRandom and not self.game.is_game_end(node.state):
             # Otherwise, expand the node, appending all possible states, and playout a random new child.
             assert len(node.children) == 0
-            for move in node.state.enumerate_moves():
-                outcome = node.state.apply_move(move)
+            for move in self.game.enumerate_moves(node.state):
+                outcome = self.game.apply_move(node.state, move)
                 node.children.append(Node(outcome.state, move, node, isRandom=outcome.isRandom))
 
             node = random.choice(node.children)
 
-        if not node.state.is_game_end():
+        if not self.game.is_game_end(node.state):
             # Do a playout.
-            terminalState = node.state.copy()
-            terminalState.playout()
+            terminalState = self.game.playout(node.state)
+
         else:
             # We're already in the terminal state, just reuse the result.
             terminalState = node.state
 
-        isWinInt = terminalState.get_score(self.playerIndex)
+        isWinInt = self.game.get_score(terminalState, self.playerIndex)
 
         # Update the parents.
         while node is not None:
