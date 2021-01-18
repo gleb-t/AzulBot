@@ -3,18 +3,25 @@ from typing import *
 
 import numpy as np
 
-from frozenlake import FrozenLake, Move
+from frozenlake import FrozenLake, Move, State
 from lib.StageTimer import StageTimer
 from mcts_bot import MctsBot
 
 
-def random_bot(state: FrozenLake) -> Move:
-    return random.choice(tuple(state.enumerate_moves()))
+def build_random_bot():
+    lake = FrozenLake()
+
+    def _bot(state: State) -> Move:
+        return random.choice(tuple(lake.enumerate_moves(state)))
+
+    return _bot
 
 
 def build_mcts_bot(budget: int = 1000):
-    def _bot(state: FrozenLake):
-        mcts = MctsBot(state, 0)
+    lake = FrozenLake()
+
+    def _bot(state: State):
+        mcts = MctsBot(lake, state, 0)
         for _ in range(budget):
             mcts.step()
 
@@ -38,13 +45,14 @@ def main():
         timer.start_pass()
 
         game = FrozenLake()
+        state = game.get_init_state()
 
         roundCount = 0
-        while not game.is_game_end():
+        while not game.is_game_end(state):
             timer.start_stage('decide')
-            move = players[0](game)
+            move = players[0](state)
             timer.start_stage('move')
-            game = game.apply_move(move).state
+            state = game.apply_move(state, move).state
 
             # _env.reset()
             # _env.s = game.state
@@ -54,7 +62,7 @@ def main():
 
         timer.end_pass()
         dur = timer.get_pass_duration()
-        score = game.get_score(0)
+        score = game.get_score(state, 0)
         scores.append([score])
         rounds.append([roundCount])
         print(f"Finished a game with score {score}"

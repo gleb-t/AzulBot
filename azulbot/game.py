@@ -41,3 +41,8 @@ class Game(Generic[TState, TMove], metaclass=ABCMeta):
     @abstractmethod
     def get_score(self, state: TState, playerIndex: int) -> float:
         pass
+
+    @staticmethod
+    @abstractmethod
+    def get_init_state():
+        pass

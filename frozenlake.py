@@ -1,20 +1,18 @@
 import copy
 import random
 from dataclasses import dataclass
-from typing import Optional, List, Callable, Generator
+from typing import *
 
 import gym
 from gym.envs.registration import register
 
-from azulbot import GameState, TMove, MoveOutcome
-
+from azulbot import Game, MoveOutcome, GameState
 
 register(
         id='FrozenLakeNotSlippery-v0',
         entry_point='gym.envs.toy_text:FrozenLakeEnv',
         kwargs={'map_name': '4x4', 'is_slippery': False}
 )
-_env = gym.make('FrozenLakeNotSlippery-v0')
 
 
 @dataclass
@@ -22,36 +20,59 @@ class Move:
     d: int
 
 
-class FrozenLake(GameState[Move]):
+@dataclass
+class State(GameState):
+    s: int
+
+    def copy(self) -> 'State':
+        return State(self.s)
+
+
+class FrozenLake(Game[State, Move]):
 
     def __init__(self):
-        self.state = _env.reset()
-        self.reward = None
-        self.isEnd = False
+        self.env = gym.make('FrozenLakeNotSlippery-v0')
+        self.isTerminalMap = {0: False}  # type: Dict[int, bool]
+        self.scoreMap = {0: 0}  # type: Dict[int, float]
 
-    def enumerate_moves(self) -> List[Move]:
+    def enumerate_moves(self, state: State) -> List[Move]:
         return [Move(d) for d in (0, 1, 2, 3)]
 
-    def apply_move(self, move: Move) -> MoveOutcome['FrozenLake']:
-        newState = copy.copy(self)
-        newState._apply_move_inplace(move)
-        return MoveOutcome(newState, False, newState.isEnd)
+    def apply_move(self, state: State, move: Move) -> MoveOutcome[State]:
+        self.env.reset()
+        self.env.s = state.s
 
-    def _apply_move_inplace(self, move: Move):
-        _env.reset()
-        _env.s = self.state
+        s, reward, isEnd, _ = self.env.step(move.d)
 
-        self.state, self.reward, self.isEnd, _ = _env.step(move.d)
+        self.isTerminalMap[s] = isEnd
+        self.scoreMap[s] = reward
 
-    def playout(self, players: Optional[List[Callable[['FrozenLake'], Move]]] = None):
-        if players is None:
-            players = [lambda s: Move(random.choice((0, 1, 2, 3)))]
+        return MoveOutcome(State(s), False, isEnd)
 
-        while not self.isEnd:
-            self._apply_move_inplace(players[0](self))
+    def playout(self, state: State) -> State:
+        players = [lambda s: Move(random.choice((0, 1, 2, 3)))]
 
-    def is_game_end(self) -> bool:
-        return self.isEnd
+        isEnd = False
+        while not isEnd:
+            outcome = self.apply_move(state, players[0](state))
+            state = outcome.state
+            isEnd = outcome.isEnd
 
-    def get_score(self, playerIndex: int) -> float:
-        return self.reward
+        return state
+
+    def is_game_end(self, state: State) -> bool:
+        # Hacky way of evaluating if a state is terminal and its score. Gym doesn't allow for it.
+        if state.s in self.isTerminalMap:
+            return self.isTerminalMap[state.s]
+        else:
+            raise RuntimeError(f"Haven't encountered state {state.s}, don't know if it is terminal.")
+
+    def get_score(self, state: State, playerIndex: int) -> float:
+        if state.s in self.scoreMap:
+            return self.scoreMap[state.s]
+        else:
+            raise RuntimeError(f"Haven't encountered state {state.s}, don't know it's score.")
+
+    @staticmethod
+    def get_init_state():
+        return State(0)
