@@ -1,3 +1,4 @@
+import operator
 import random
 from typing import *
 
@@ -13,6 +14,36 @@ def build_random_bot():
 
     def _bot(state: AzulState) -> Move:
         return random.choice(tuple(azul.enumerate_moves(state)))
+
+    return _bot
+
+
+def build_greedy_bot():
+    azul = Azul()
+
+    def _bot(state: AzulState) -> Move:
+
+        player = state.players[state.nextPlayer]
+
+        def get_move_stats(move: Move) -> Tuple[float, ...]:
+            tilesAvailable = state.bins[move.sourceBin][int(move.color)]
+            if move.targetQueue == Azul.WallSize:
+                return tilesAvailable, 0, 0
+
+            spaceLeft = move.targetQueue + 1 - player.queue[move.targetQueue][1]
+
+            tilesMoved = min(tilesAvailable, spaceLeft)
+            tilesDropped = -min(0, spaceLeft - tilesAvailable)
+            extraSpace = max(0, spaceLeft - tilesAvailable)
+
+            return tilesDropped, -tilesMoved, extraSpace
+
+        moves = azul.enumerate_moves(state)
+        moveStats = map(get_move_stats, moves)
+
+        bestMove = min(zip(moves, moveStats), key=operator.itemgetter(1))[0]
+
+        return bestMove
 
     return _bot
 
@@ -33,10 +64,11 @@ def build_mcts_bot(budget: int = 1000):
 def main():
     gamesToPlay = 10
     maxRoundsPerGame = 100
-    mctsBudget = 10000
+    mctsBudget = 100000
 
     azul = Azul()
-    players = [build_random_bot(), build_mcts_bot(mctsBudget)]
+    # players = [build_random_bot(), build_mcts_bot(mctsBudget)]
+    players = [build_greedy_bot(), build_mcts_bot(mctsBudget)]
     scores = []
     timePerMove = []
 

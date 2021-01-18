@@ -5,7 +5,7 @@ from typing import *
 import numpy as np
 from numba import jit
 
-from azulbot.game import GameState, MoveOutcome
+from azulbot.game import MoveOutcome
 
 T = TypeVar('T')
 
@@ -83,7 +83,7 @@ class IllegalMoveException(Exception):
     pass
 
 
-class Azul(GameState[Move], ComparableNumpy):
+class Azul(ComparableNumpy):
 
     ColorNumber = 5
     TileNumber = 20
