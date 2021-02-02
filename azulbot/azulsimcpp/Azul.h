@@ -15,18 +15,18 @@ enum class Color : uint8_t;
 class Azul
 {
 public:
-    static const uint8_t ColorNumber = 5;
-    static const uint8_t TileNumber = 20;
-    static const uint8_t PlayerNumber = 2;
-    static const uint8_t BinNumber = 5;
-    static const uint8_t BinSize = 4;
-    static const uint8_t WallSize = 5;
-    static const uint8_t FloorSize = 7;
-    static const std::array<uint8_t, FloorSize> FloorScores;
+    static constexpr uint8_t ColorNumber = 5;
+    static constexpr uint8_t TileNumber = 20;
+    static constexpr uint8_t PlayerNumber = 2;
+    static constexpr uint8_t BinNumber = 5;
+    static constexpr uint8_t BinSize = 4;
+    static constexpr uint8_t WallSize = 5;
+    static constexpr uint8_t FloorSize = 7;
+    static constexpr std::array<uint8_t, FloorSize> FloorScores;
 
-    static const uint8_t ScorePerRow = 2;
-    static const uint8_t ScorePerColumn = 7;
-    static const uint8_t ScorePerColor = 10;
+    static constexpr uint8_t ScorePerRow = 2;
+    static constexpr uint8_t ScorePerColumn = 7;
+    static constexpr uint8_t ScorePerColor = 10;
 
     Azul() = default;
 
