@@ -22,7 +22,7 @@ public:
     static constexpr uint8_t BinSize = 4;
     static constexpr uint8_t WallSize = 5;
     static constexpr uint8_t FloorSize = 7;
-    static constexpr std::array<uint8_t, FloorSize> FloorScores;
+    static const std::array<uint8_t, FloorSize> FloorScores;
 
     static constexpr uint8_t ScorePerRow = 2;
     static constexpr uint8_t ScorePerColumn = 7;
