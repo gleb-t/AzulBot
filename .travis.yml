@@ -1,5 +1,13 @@
 os:
   - linux
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-9
+before_install:
+  - CC=gcc-9 && CXX=g++-9
 language: python
 python:
   - 3.7
