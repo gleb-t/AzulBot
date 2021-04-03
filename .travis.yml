@@ -1,12 +1,21 @@
 os:
   - linux
 language: python
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-9
 python:
-  - 3.7
   - 3.8
 install:
-  - pip install numpy numba
-  - pip install coverage
+  - export CC=gcc-9 && export CXX=g++-9
+  - python -c "from sysconfig import get_paths as gp; print(gp()[\"include\"])"
+  - ${CXX} --version
+  - (cd azulbot/azulsimcpp && make)
+  - pip install numpy numba pybind11 coverage
+  - pip install -e .
 script:
   - coverage run -m unittest test_azulpy
   - coverage run -a -m unittest test_azulsim
