@@ -69,7 +69,7 @@ class TestAzul(unittest.TestCase):
 
         state.firstPlayer = 1  # We will change it and check later.
 
-        state = azul.apply_move(state, Move(0, Color.Black, 1, )).state
+        state = azul.apply_move_without_scoring(state, Move(0, Color.Black, 1, )).state
 
         # The pool should hold the leftovers.
         self.assertEqual(state.bins[-1], [0, 0, 1, 0, 0, 1])  # See 'Color'.
@@ -94,8 +94,8 @@ class TestAzul(unittest.TestCase):
         self.assertEqual(state.nextPlayer, 1)
 
         # Make a few more moves.
-        state = azul.apply_move(state, Move(1, Color.Yellow, 2, )).state
-        state = azul.apply_move(state, Move(Azul.BinNumber, Color.Red, 3)).state
+        state = azul.apply_move_without_scoring(state, Move(1, Color.Yellow, 2, )).state
+        state = azul.apply_move_without_scoring(state, Move(Azul.BinNumber, Color.Red, 3)).state
 
         # Check the pool.
         self.assertEqual(state.bins[-1], [0, 0, 1, 0, 0, 1])
@@ -314,7 +314,7 @@ class TestAzul(unittest.TestCase):
             state = azul.deal_round(state, tiles)
 
             for move in moves:
-                state = azul.apply_move(state, move).state
+                state = azul.apply_move_without_scoring(state, move).state
 
             self.assertTrue(azul.is_round_end(state))
             state = azul.score_round(state)

@@ -43,7 +43,7 @@ state = azul.deal_round(state)
 move = azul.enumerate_moves(state)[0]
 timeBefore = time.time()
 for _ in range(repeats):
-    s = azul.apply_move(state, move)
+    s = azul.apply_move_without_scoring(state, move)
 timeAfter = time.time()
 
 print(f"C++ finished in {timeAfter - timeBefore:.3f} s.")

@@ -53,7 +53,33 @@ std::vector<Move> Azul::enumerate_moves(const AzulState& state) const
     return moves;
 }
 
-MoveOutcome Azul::apply_move(const AzulState& state, const Move& move) const
+MoveOutcome Azul::apply_move(const AzulState& state, const Move& move)
+{
+    //todo apply_move_wc shouldn't check for the end of round
+    AzulState next = apply_move_without_scoring(state, move).state;
+    bool isRandom = false;
+    bool isGameEnd = false;
+
+    if (is_round_end(next))
+    {
+        next = score_round(next);
+
+        if (is_game_end(next))
+        {
+            next = score_game(next);
+            isGameEnd = true;
+        }
+        else
+        {
+            next = deal_round(next);
+            isRandom = true;
+        }
+    }
+
+    return MoveOutcome{ next, isRandom, isGameEnd };
+}
+
+MoveOutcome Azul::apply_move_without_scoring(const AzulState& state, const Move& move) const
 {
     AzulState next{state};
     auto& player = next.players[state.nextPlayer];
@@ -108,7 +134,7 @@ MoveOutcome Azul::apply_move(const AzulState& state, const Move& move) const
     }
 
     // todo Maybe we should be returning an rvalue. Check pybind return policies.
-    return MoveOutcome{next, is_round_end(next), is_game_end(next)};
+    return MoveOutcome{ next, false, false };
 }
 
 AzulState Azul::playout(const AzulState& state, uint32_t maxRoundTimeout)
@@ -127,7 +153,7 @@ AzulState Azul::playout(const AzulState& state, uint32_t maxRoundTimeout)
             std::vector<Move> legalMoves = enumerate_moves(curr);
             std::uniform_int_distribution<> uniform(0, static_cast<int>(legalMoves.size()) - 1);
             const Move& move = legalMoves[uniform(_randomEngine)];
-            curr = apply_move(curr, move).state;
+            curr = apply_move_without_scoring(curr, move).state;
         }
 
         curr = score_round(curr);

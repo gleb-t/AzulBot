@@ -41,7 +41,7 @@ class AzulCmd(cmd.Cmd):
         # Apply the move.
         self.history.append(self.azul)
         try:
-            self.azul = self.azul.apply_move(move)
+            self.azul = self.azul.apply_move_without_scoring(move)
         except IllegalMoveException as e:
             print(f"# {e}")
             self.history.pop()

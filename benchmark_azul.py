@@ -48,27 +48,31 @@ def build_greedy_bot():
     return _bot
 
 
-def build_mcts_bot(budget: int = 1000):
-    azul = Azul()
+class MctsBotWrapper:
 
-    def _bot(state: AzulState):
-        mcts = MctsBot(azul, state, state.nextPlayer)
-        for _ in range(budget):
-            mcts.step()
+    def __init__(self, budget: int = 1000, samplingWidth: int = 10):
+        self.budget = budget
+        self.samplingWidth = samplingWidth
 
-        return mcts.get_best_move()
+    def __call__(self, state):
+        azul = Azul()
+        self.bot = MctsBot(azul, state, state.nextPlayer, samplingWidth=self.samplingWidth)
 
-    return _bot
+        for _ in range(self.budget):
+            self.bot.step()
+
+        return self.bot.get_best_move()
 
 
 def main():
     gamesToPlay = 10
     maxRoundsPerGame = 100
-    mctsBudget = 100000
+    mctsBudget = 10000
+    samplingWidth = 500
 
     azul = Azul()
     # players = [build_random_bot(), build_mcts_bot(mctsBudget)]
-    players = [build_greedy_bot(), build_mcts_bot(mctsBudget)]
+    players = [build_greedy_bot(), MctsBotWrapper(mctsBudget, samplingWidth)]
     scores = []
     timePerMove = []
 
@@ -88,7 +92,7 @@ def main():
                 timer.start_stage('decide')
                 move = players[state.nextPlayer](state)
                 timer.start_stage('move')
-                state = azul.apply_move(state, move).state
+                state = azul.apply_move_without_scoring(state, move).state
                 moveCount += 1 if state.nextPlayer == 1 else 0
 
             timer.start_stage('score')

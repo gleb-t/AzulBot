@@ -31,7 +31,9 @@ public:
     Azul() = default;
 
     std::vector<Move> enumerate_moves(const AzulState& state) const;
-    MoveOutcome apply_move(const AzulState& state, const Move& move) const;
+    MoveOutcome apply_move(const AzulState& state, const Move& move);
+    MoveOutcome apply_move_without_scoring(const AzulState& state, const Move& move) const;
+
     AzulState playout(const AzulState& state, uint32_t maxRoundTimeout = 100);
     
     AzulState deal_round(const AzulState& state, const std::vector<Color>& fixedSample = {});
