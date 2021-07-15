@@ -42,6 +42,7 @@ public:
     void _refill_bag(AzulState& state) const;
     bool is_game_end(const AzulState& state) const;
     bool is_round_end(const AzulState& state) const;
+    uint32_t get_score(const AzulState& state, uint32_t playerIndex) const;
 
     static uint32_t get_tile_score(std::array<std::array<Color, WallSize>, WallSize> wall, uint8_t iRow, uint8_t iCol);
     static Color get_wall_slot_color(uint8_t rowIndex, uint8_t colIndex)

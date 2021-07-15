@@ -60,6 +60,7 @@ struct Move
     Color color{ Color::Empty };
     uint8_t targetQueue{ 0 };
 
+    Move() = default;
     Move(uint8_t sourceBin, Color color, uint8_t targetQueue);
 
     bool operator==(const Move& other) const

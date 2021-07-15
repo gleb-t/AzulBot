@@ -35,13 +35,13 @@ class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
     def get_init_state(self) -> AzulState:
         return AzulState()
 
-    def get_score(self, state: AzulState, playerIndex: int) -> float:
-        maxScore = max([p.score for p in state.players])
-        isMax = state.players[playerIndex].score == maxScore
-        # Draws should be losses.
-        isOnly = sum(1 for p in state.players if p.score == maxScore) == 1
-
-        return int(isMax and isOnly)
+    # def get_score(self, state: AzulState, playerIndex: int) -> float:
+    #     maxScore = max([p.score for p in state.players])
+    #     isMax = state.players[playerIndex].score == maxScore
+    #     # Draws should be losses.
+    #     isOnly = sum(1 for p in state.players if p.score == maxScore) == 1
+    #
+    #     return int(isMax and isOnly)
 
     @staticmethod
     def get_wall_column_by_color(iRow: int, color: Union[Color, int]) -> int:

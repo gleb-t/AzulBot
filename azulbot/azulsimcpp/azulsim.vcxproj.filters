@@ -24,6 +24,9 @@
     <ClCompile Include="Azul.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MctsBot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AzulState.h">
@@ -33,6 +36,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MctsBot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

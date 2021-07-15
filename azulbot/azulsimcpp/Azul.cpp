@@ -144,7 +144,7 @@ AzulState Azul::playout(const AzulState& state, uint32_t maxRoundTimeout)
     uint32_t roundCount = 0;
     while (!is_game_end(curr))
     {
-        // We might get a game in the middle of a round, so we have to check.
+        // We might get a _game in the middle of a round, so we have to check.
         if (is_round_end(curr))
             curr = deal_round(curr);
 
@@ -262,7 +262,7 @@ AzulState Azul::score_round(const AzulState& state) const
 AzulState Azul::score_game(const AzulState& state) const
 {
     if (!is_game_end(state))
-        throw std::runtime_error("Cannot score the game before the end of the game.");
+        throw std::runtime_error("Cannot score the _game before the end of the _game.");
 
     AzulState next{state};
 
@@ -337,6 +337,20 @@ bool Azul::is_round_end(const AzulState& state) const
             return false;
 
     return true;
+}
+
+uint32_t Azul::get_score(const AzulState& state, uint32_t playerIndex) const
+{
+    std::vector<uint32_t> scores{};
+    std::transform(state.players.begin(), state.players.end(), std::back_inserter(scores), 
+                   [](PlayerState& p) { return p.score; });
+    const uint32_t maxScore = *std::max_element(scores.begin(), scores.end());
+    const bool isMax = state.players[playerIndex].score == maxScore;
+    const bool isOnly = std::count_if(state.players.begin(), state.players.end(), 
+                                      [maxScore](PlayerState& p) { return p.score == maxScore; });
+
+    return static_cast<uint32_t>(isMax && isOnly);
+    
 }
 
 uint32_t Azul::get_tile_score(std::array<std::array<Color, WallSize>, WallSize> wall, uint8_t iRow, uint8_t iCol)

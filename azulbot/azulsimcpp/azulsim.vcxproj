@@ -22,10 +22,12 @@
     <ClCompile Include="Azul.cpp" />
     <ClCompile Include="azulsim.cpp" />
     <ClCompile Include="AzulState.cpp" />
+    <ClCompile Include="MctsBot.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Azul.h" />
     <ClInclude Include="AzulState.h" />
+    <ClInclude Include="MctsBot.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
