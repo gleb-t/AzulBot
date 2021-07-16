@@ -2,6 +2,9 @@
 #include <cassert>
 #include <iterator>
 #include <stdexcept>
+#include <iostream>
+#include <queue>
+
 
 MctsBot::MctsBot(Azul& azul, const AzulState& state, int playerIndex, int samplingWidth)
     :_game(azul), _root(state, Move(), nullptr), _playerIndex(playerIndex), _samplingWidth(samplingWidth)
@@ -43,14 +46,13 @@ void MctsBot::step()
             {
                 MoveOutcome newRandomOutcome = _game.apply_move(node->parent->state, node->move);
                 assert(newRandomOutcome.isRandom);
-                node->children.emplace_back(newRandomOutcome.state, Move(), node);
-                node = &node->children[node->children.size() - 1];
+                node = node->children.emplace_back(std::make_unique<Node>(newRandomOutcome.state, Move(), node)).get();
             }
             else
             {
                 // If the sampling width is reached, just pick one of the sampled outcomes.
                 std::uniform_int_distribution<> uniform(0, static_cast<int>(node->children.size()) - 1);
-                node = &node->children[uniform(_randomEngine)];
+                node = node->children[uniform(_randomEngine)].get();
             }
         }
         else
@@ -82,7 +84,7 @@ void MctsBot::step()
     
 
     // If the node represents a terminal state, we don't need to expand it.
-    if (!_game.is_game_end(node->state))  // todo no need to recompute, store move outcome.
+    if (!_game.is_game_end(node->state))  // todo No need to recompute, store the move outcome.
     {
         // Otherwise, expand the node, appending all possible states, and playout a random new child.
         assert(node->children.empty());
@@ -91,26 +93,29 @@ void MctsBot::step()
             MoveOutcome outcome = _game.apply_move(node->state, move);
             if (!outcome.isRandom)
             {
-                node->children.emplace_back(outcome.state, move, node);
+                Node* newNode = node->children.emplace_back(std::make_unique<Node>(outcome.state, move, node)).get();
             }
             else
             {
                 // Create a special random node, whose children are the possible outcomes of the same move. Fill one of those outcome.
-                Node randomNode{AzulState{}, move, node};
-                randomNode.isRandom = true;
-                randomNode.children.emplace_back(outcome.state, Move{}, randomNode);
-                node->children.push_back(std::move(randomNode));
+                Node* randomNode = node->children.emplace_back(std::make_unique<Node>(AzulState{}, move, node)).get();
+                randomNode->isRandom = true;
+                Node* newNode = randomNode->children.emplace_back(std::make_unique<Node>(outcome.state, Move{}, randomNode)).get();
             }
         }
 
+        // Now that the node was expanded, choose one of its children to do a playout.
+        assert(!node->children.empty());
+        std::uniform_int_distribution<> uniform(0, static_cast<int>(node->children.size()) - 1);
+        node = node->children[uniform(_randomEngine)].get();
+        if (node->isRandom)
+        {
+            assert(!node->children.empty());
+            uniform = std::uniform_int_distribution<>(0, static_cast<int>(node->children.size()) - 1);
+            node = node->children[uniform(_randomEngine)].get();
+        }
     }
-    std::uniform_int_distribution<> uniform(0, static_cast<int>(node->children.size()) - 1);
-    node = &node->children[uniform(_randomEngine)];
-    if (node->isRandom)
-    {
-        uniform = std::uniform_int_distribution<>(0, static_cast<int>(node->children.size()) - 1);
-        node = &node->children[uniform(_randomEngine)];
-    }
+
 
     //if not self._game.is_game_end(node.state):
     //	# Do a playout.
@@ -128,7 +133,7 @@ void MctsBot::step()
     //	node.wins += isWinInt
     //	node = node.parent
 
-    AzulState terminalState{};
+    AzulState terminalState;
     if (!_game.is_game_end(node->state))
     {
         // Do a playout.
@@ -165,13 +170,21 @@ Move MctsBot::get_best_move()
 
     std::vector<double> winPercentages{};
     std::transform(_root.children.begin(), _root.children.end(), std::back_inserter(winPercentages),
-                   [](Node* n) { return static_cast<double>(n->wins) / (n->plays + 0.001); });
+                   [](const std::unique_ptr<Node>& n) { return static_cast<double>(n->wins) / (n->plays + 0.001); });
     const auto maxIt = std::max_element(winPercentages.begin(), winPercentages.end());
 
-    return _root.children[maxIt - winPercentages.begin()].move;
+    return _root.children[maxIt - winPercentages.begin()]->move;
 }
 
-MctsBot::Node* MctsBot::_select_max_uct(std::vector<Node>& nodes, int parentPlays)
+// MctsBot::Node::~Node()
+// {
+//     // Recursively delete the whole tree.
+//     // If recursion runs into stack issues, add a Tree class that cleans up all the nodes with BFS.
+//     for (Node* child : children)
+//         delete child;
+// }
+
+MctsBot::Node* MctsBot::_select_max_uct(std::vector<std::unique_ptr<Node>>& nodes, int parentPlays)
 {
     //def _select_max_uct(nodes: Sequence[Node], parentPlays: int):
     //	bestIndices, bestVal = [], -1
@@ -192,20 +205,21 @@ MctsBot::Node* MctsBot::_select_max_uct(std::vector<Node>& nodes, int parentPlay
     // todo This code is biased, not choosing randomly for equal values (see the Python version).
     Node* bestNode = nullptr;
     double bestValue = -1;
-    for (auto& i : nodes)
+    for (auto& node : nodes)
     {
-        auto* node = &i;
-        if (i.plays == 0)
-            return node;
+        if (node->plays == 0)
+            return node.get();
 
         double uct = static_cast<double>(node->wins) / node->plays + ExplorationWeight * sqrt(log(parentPlays) / node->plays);
 
         if (uct > bestValue)
         {
             bestValue = uct;
-            bestNode = node;
+            bestNode = node.get();
         }
     }
+
+    assert(bestNode != nullptr);
 
     return bestNode;
 }

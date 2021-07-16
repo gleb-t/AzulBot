@@ -3,6 +3,7 @@
 #include <pybind11/stl.h>
 
 #include "AzulState.h"
+#include "MctsBot.h"
 #include "utils.h"
 
 namespace py = pybind11;
@@ -106,5 +107,12 @@ PYBIND11_MODULE(azulcpp, m)
         .def("score_game", &Azul::score_game)
         .def("_refill_bag", &Azul::_refill_bag)
         .def_static("get_wall_slot_color", &Azul::get_wall_slot_color);
+
+    py::class_<MctsBot>(m, "MctsBot")
+        .def(py::init<Azul&, const AzulState&, int, int>(), 
+             py::arg("azul"), py::arg("state"), py::arg("playerIndex"), py::arg("samplingWidth") = 10)
+        .def("step", &MctsBot::step)
+        .def("get_best_move", &MctsBot::get_best_move);
+
 }
 

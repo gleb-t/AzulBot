@@ -6,7 +6,8 @@ import numpy as np
 
 from azulbot.azulsim import Azul, Move, AzulState
 from lib.StageTimer import StageTimer
-from mcts_bot import MctsBot
+# from mcts_bot import MctsBot
+from azulbot.azulsim import MctsBot
 
 
 def build_random_bot():
@@ -67,8 +68,8 @@ class MctsBotWrapper:
 def main():
     gamesToPlay = 10
     maxRoundsPerGame = 100
-    mctsBudget = 10000
-    samplingWidth = 500
+    mctsBudget = 100000
+    samplingWidth = 10
 
     azul = Azul()
     # players = [build_random_bot(), build_mcts_bot(mctsBudget)]
