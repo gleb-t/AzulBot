@@ -6,8 +6,8 @@
 #include <queue>
 
 
-MctsBot::MctsBot(Azul& azul, const AzulState& state, int playerIndex, int samplingWidth)
-    :_game(azul), _root(state, Move(), nullptr), _playerIndex(playerIndex), _samplingWidth(samplingWidth)
+MctsBot::MctsBot(Azul& azul, const AzulState& state, int playerIndex, int samplingWidth, double_t explorationWeight)
+    :_game(azul), _root(state, Move(), nullptr), _playerIndex(playerIndex), _samplingWidth(samplingWidth), _explorationWeight(explorationWeight)
 {
 }
 
@@ -145,13 +145,13 @@ void MctsBot::step()
         terminalState = node->state;
     }
 
-    const int isWinInt = _game.get_score(terminalState, _playerIndex);
+    const uint32_t score = _game.get_score(terminalState, _playerIndex);
 
     // Update the parents;
     while (node != nullptr)
     {
         node->plays += 1;
-        node->wins += isWinInt;
+        node->scores += score;
         node = node->parent;
     }
     
@@ -170,7 +170,7 @@ Move MctsBot::get_best_move()
 
     std::vector<double> winPercentages{};
     std::transform(_root.children.begin(), _root.children.end(), std::back_inserter(winPercentages),
-                   [](const std::unique_ptr<Node>& n) { return static_cast<double>(n->wins) / (n->plays + 0.001); });
+                   [](const std::unique_ptr<Node>& n) { return static_cast<double>(n->scores) / (n->plays + 0.001); });
     const auto maxIt = std::max_element(winPercentages.begin(), winPercentages.end());
 
     return _root.children[maxIt - winPercentages.begin()]->move;
@@ -210,7 +210,7 @@ MctsBot::Node* MctsBot::_select_max_uct(std::vector<std::unique_ptr<Node>>& node
         if (node->plays == 0)
             return node.get();
 
-        double uct = static_cast<double>(node->wins) / node->plays + ExplorationWeight * sqrt(log(parentPlays) / node->plays);
+        double uct = static_cast<double>(node->scores) / node->plays + _explorationWeight * sqrt(log(parentPlays) / node->plays);
 
         if (uct > bestValue)
         {

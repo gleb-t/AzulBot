@@ -10,9 +10,7 @@
 class MctsBot
 {
 public:
-    constexpr static double ExplorationWeight = 1 / 1.4142;
-
-    MctsBot(Azul& azul, const AzulState& state, int playerIndex, int samplingWidth = 10);
+    MctsBot(Azul& azul, const AzulState& state, int playerIndex, int samplingWidth = 10, double_t explorationWeight = 1 / 1.4142);
 
     void step();
     Move get_best_move();
@@ -26,8 +24,8 @@ protected:
         Node* parent;
         std::vector<std::unique_ptr<Node>> children{};
         bool isRandom{};
-        int wins{};
-        int plays{};
+        uint32_t scores{};
+        uint32_t plays{};
 
 
         Node(AzulState state, Move move, Node* parent)
@@ -41,8 +39,9 @@ protected:
     Node _root;
     uint32_t _playerIndex;
     uint32_t _samplingWidth;
+    double_t _explorationWeight;
 
     std::mt19937 _randomEngine{std::random_device{}()};
 
-    static Node* _select_max_uct(std::vector<std::unique_ptr<Node>>& nodes, int parentPlays);
+    Node* _select_max_uct(std::vector<std::unique_ptr<Node>>& nodes, int parentPlays);
 };

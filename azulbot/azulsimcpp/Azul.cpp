@@ -341,15 +341,17 @@ bool Azul::is_round_end(const AzulState& state) const
 
 uint32_t Azul::get_score(const AzulState& state, uint32_t playerIndex) const
 {
-    std::vector<uint32_t> scores{};
-    std::transform(state.players.begin(), state.players.end(), std::back_inserter(scores), 
-                   [](const PlayerState& p) { return p.score; });
-    const uint32_t maxScore = *std::max_element(scores.begin(), scores.end());
-    const bool isMax = state.players[playerIndex].score == maxScore;
-    const bool isOnly = std::count_if(state.players.begin(), state.players.end(), 
-                                      [maxScore](const PlayerState& p) { return p.score == maxScore; });
+    // std::vector<uint32_t> scores{};
+    // std::transform(state.players.begin(), state.players.end(), std::back_inserter(scores), 
+    //                [](const PlayerState& p) { return p.score; });
+    // const uint32_t maxScore = *std::max_element(scores.begin(), scores.end());
+    // const bool isMax = state.players[playerIndex].score == maxScore;
+    // const bool isOnly = std::count_if(state.players.begin(), state.players.end(), 
+    //                                   [maxScore](const PlayerState& p) { return p.score == maxScore; });
+    //
+    // return static_cast<uint32_t>(isMax && isOnly);
 
-    return static_cast<uint32_t>(isMax && isOnly);
+    return state.players[playerIndex].score;
     
 }
 

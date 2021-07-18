@@ -1,6 +1,7 @@
 import operator
 import os
 import random
+from datetime import datetime
 from pathlib import Path
 from typing import *
 
@@ -56,13 +57,15 @@ def build_greedy_bot():
 
 class MctsBotWrapper:
 
-    def __init__(self, budget: int = 1000, samplingWidth: int = 10):
+    def __init__(self, budget: int, samplingWidth: int, explorationWeight: float):
         self.budget = budget
         self.samplingWidth = samplingWidth
+        self.explorationWeight = explorationWeight
 
     def __call__(self, state):
         azul = Azul()
-        self.bot = MctsBot(azul, state, state.nextPlayer, samplingWidth=self.samplingWidth)
+        self.bot = MctsBot(azul, state, state.nextPlayer,
+                           samplingWidth=self.samplingWidth, explorationWeight=self.explorationWeight)
 
         for _ in range(self.budget):
             self.bot.step()
@@ -73,9 +76,10 @@ class MctsBotWrapper:
 def main():
     gamesToPlay = 30
     maxRoundsPerGame = 100
-    mctsBudgets = [1000, 10000, 100000, 1000000]
-    # mctsBudgets = [100, 1000]
+    # mctsBudgets = [1000, 10000, 100000, 1000000]
+    mctsBudgets = [100, 1000, 10000]
     samplingWidth = 10
+    explorationWeight = 10
 
     outDirPath = Path(os.environ['DEV_OUT_PATH']) / 'azul_bot' if 'DEV_OUT_PATH' in os.environ else Path.cwd()
     outDirPath.mkdir(parents=True, exist_ok=True)
@@ -85,7 +89,7 @@ def main():
     for budget in mctsBudgets:
         azul = Azul()
         # players = [build_random_bot(), build_mcts_bot(mctsBudget)]
-        players = [build_greedy_bot(), MctsBotWrapper(budget, samplingWidth)]
+        players = [build_greedy_bot(), MctsBotWrapper(budget, samplingWidth, explorationWeight)]
         scores = []
         timePerMove = []
 
@@ -161,7 +165,8 @@ def main():
     resultTable = pd.DataFrame(resultRows)
     print(resultTable)
     ax = sns.boxplot(x='budget', y='score', hue='player', data=resultTable)
-    ax.get_figure().savefig(outDirPath / 'scores.pdf')
+    date = datetime.now()
+    ax.get_figure().savefig(outDirPath / f'{date.strftime("%y%m%d-%H%M%S")}_scores.pdf')
 
     plt.show()
 
