@@ -10,6 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from GridSearchManager import GridSearchManager
 from azulbot.azulsim import Azul, Move, AzulState
 from lib.StageTimer import StageTimer
 # from mcts_bot import MctsBot
@@ -81,15 +82,21 @@ def main():
     samplingWidth = 10
     explorationWeight = 10
 
+    searchManager = GridSearchManager(defaultConfig={})
+    searchManager.add_param_axis('mctsBudget', [100, 1000, 10000, 100000, 300000])
+    # searchManager.add_param_axis('mctsBudget', [100, 1000])
+    searchManager.add_param_axis('explorationWeight', [10, 20, 50])
+    # searchManager.add_param_axis('explorationWeight', [5, 10])
+
     outDirPath = Path(os.environ['DEV_OUT_PATH']) / 'azul_bot' if 'DEV_OUT_PATH' in os.environ else Path.cwd()
     outDirPath.mkdir(parents=True, exist_ok=True)
 
     resultRows = []
 
-    for budget in mctsBudgets:
+    for config, _, _ in searchManager.generate_configuration():
         azul = Azul()
         # players = [build_random_bot(), build_mcts_bot(mctsBudget)]
-        players = [build_greedy_bot(), MctsBotWrapper(budget, samplingWidth, explorationWeight)]
+        players = [build_greedy_bot(), MctsBotWrapper(config['mctsBudget'], samplingWidth, config['explorationWeight'])]
         scores = []
         timePerMove = []
 
@@ -145,13 +152,15 @@ def main():
             resultRows.append({
                 'player': 'greedy',
                 'budget': 0,
+                'explorationWeight': 0,
                 'score': scoresArray[i, 0],
                 'isWin': scoresArray[i, 0] > scoresArray[i, 1]
             })
 
             resultRows.append({
                 'player': 'mcts',
-                'budget': budget,
+                'budget': config['mctsBudget'],
+                'explorationWeight': config['explorationWeight'],
                 'score': scoresArray[i, 1],
                 'isWin': scoresArray[i, 0] < scoresArray[i, 1]
             })
@@ -164,11 +173,15 @@ def main():
     print("Plotting.")
     resultTable = pd.DataFrame(resultRows)
     print(resultTable)
-    ax = sns.boxplot(x='budget', y='score', hue='player', data=resultTable)
+    resultTable = resultTable[resultTable['player'] == 'mcts']
+    ax = sns.boxplot(x='budget', y='score', hue='explorationWeight', data=resultTable)
     date = datetime.now()
-    ax.get_figure().savefig(outDirPath / f'{date.strftime("%y%m%d-%H%M%S")}_scores.pdf')
+    dateStr = date.strftime("%y%m%d-%H%M%S")
+    ax.get_figure().savefig(outDirPath / f'{dateStr}_scores.pdf')
 
     plt.show()
+
+    resultTable.to_csv(outDirPath / f'{dateStr}_metrics.csv', sep='\t')
 
     print("Done.")
 
