@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <queue>
+#include <algorithm>
 
 
 MctsBot::MctsBot(Azul& azul, const AzulState& state, int playerIndex, int samplingWidth, double_t explorationWeight)
