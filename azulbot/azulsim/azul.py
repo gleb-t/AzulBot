@@ -18,7 +18,60 @@ class Move(MoveCpp):
 
 
 class AzulState(AzulStateCpp, GameState, metaclass=PybindAbcMeta):
-    pass
+
+    def print_state(self):
+        print('#' * 20)
+        self._print_bins()
+
+        for iPlayer in range(len(self.players)):
+            self._print_player(iPlayer)
+
+    def _print_bins(self):
+        print("### Table ###")
+        print("# Bins")
+        for iRow, b in enumerate(self.bins[:-1]):
+            line = ''.join(Azul.color_to_str(c) for c in AzulState._bin_to_array(b))
+            print(f"  [{iRow}]" + line.rjust(4, '_'))
+
+        print("# Pool [{}]".format(' ' if self.poolWasTouched else '1'))
+        line = ''.join(Azul.color_to_str(c) for c in AzulState._bin_to_array(self.bins[-1]))
+        print(f"  [{Azul.WallSize}]" + line)
+
+    def _print_player(self, playerIndex: int):
+        player = self.players[playerIndex]
+
+        nextTurnStr = ' (NEXT)' if self.nextPlayer == playerIndex else ''
+        print(f"### Player {playerIndex}{nextTurnStr} ###")
+        print("# Queue")
+        for iRow, (color, count) in enumerate(player.queue):
+            line = Azul.color_to_str(color) * count
+            line = line.rjust(iRow + 1, '_')
+            line = line.rjust(Azul.WallSize, ' ')
+            print(f"  [{iRow}]" + line)
+        print("# Floor")
+        print("# " + ''.join(map(str, Azul.FloorScores)))
+        line = ''.join('X' for _ in range(player.floorCount)).ljust(Azul.FloorSize, '_')
+        print("  " + line)
+
+        print("# Wall")
+        for iRow, row in enumerate(player.wall):
+            line = ''
+            for iCol, color in enumerate(row):
+                if color == Color.Empty:
+                    line += Azul.color_to_str(Azul.get_wall_slot_color(iRow, iCol)).lower()
+                else:
+                    line += Azul.color_to_str(color)
+
+            print("  " + line)
+
+    @staticmethod
+    def _bin_to_array(bin_: List[int]) -> List[int]:
+        result = []
+        for iColor, count in enumerate(bin_):
+            result += [Color(iColor)] * count
+
+        return result
+
 
 
 class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
