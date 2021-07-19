@@ -67,6 +67,9 @@ PYBIND11_MODULE(azulcpp, m)
         .def_readwrite("nextPlayer", &AzulState::nextPlayer)
         .def_readwrite("firstPlayer", &AzulState::firstPlayer)
         .def_readwrite("poolWasTouched", &AzulState::poolWasTouched)
+        .def_readwrite("roundIndex", &AzulState::roundIndex)
+        .def_readwrite("turnIndex", &AzulState::turnIndex)
+
 
         .def("copy", &AzulState::copy)
         .def("set_bin", &AzulState::set_bin)

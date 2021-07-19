@@ -82,6 +82,10 @@ struct AzulState
     uint8_t firstPlayer{ 0 };
     bool poolWasTouched{ false };
 
+    // Convenience counters.
+    uint32_t roundIndex{0};
+    uint32_t turnIndex{0};
+
     AzulState() = default;
 
     AzulState copy() const

@@ -42,7 +42,7 @@ class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
 
     @staticmethod
     def print_state(state: AzulState):
-        print('#' * 20)
+        print('=' * 20 + f' Round {state.roundIndex + 1} Turn {state.turnIndex + 1} ' + '=' * 20)
         Azul._print_bins(state)
 
         for iPlayer in range(len(state.players)):

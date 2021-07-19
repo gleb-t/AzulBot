@@ -103,6 +103,9 @@ MoveOutcome Azul::apply_move_without_scoring(const AzulState& state, const Move&
     // Pass the turn to the next player.
     next.nextPlayer = (state.nextPlayer + 1) % Azul::PlayerNumber;
 
+    // Update the convenience counter.
+    next.turnIndex += 1;
+
     // Take away the tiles of the moved color.
     next.bins[move.sourceBin][static_cast<size_t>(move.color)] = 0;
 
@@ -257,6 +260,10 @@ AzulState Azul::score_round(const AzulState& state) const
         player.score = std::max({0, newScore});
         player.floorCount = 0;
     }
+
+    // Update the counters.
+    next.roundIndex += 1;
+    next.turnIndex = 0;
 
     return next;
 }

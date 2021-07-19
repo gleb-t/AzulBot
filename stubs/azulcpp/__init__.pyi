@@ -40,6 +40,9 @@ class AzulState:
     firstPlayer: int
     poolWasTouched: bool
 
+    roundIndex: int
+    turnIndex: int
+
     def copy(self) -> AzulState: ...
     def set_bin(self, binIndex: int, color: Color, count: int): ...
 

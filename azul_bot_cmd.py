@@ -16,11 +16,11 @@ class AzulCmd(cmd.Cmd):
         self.history = []  # type: List[AzulState]
         self.azul = Azul()
         self.state = self.azul.get_init_state()
-
         self.state = self.azul.deal_round(self.state)
 
         self.botPlayerIndex = 0
-        self.budget = 100000
+        # self.budget = 100000
+        self.budget = 1000
         self.samplingWidth = 10
         self.explorationWeight = 20
 
@@ -56,6 +56,10 @@ class AzulCmd(cmd.Cmd):
         self._apply_move(move)
 
     def _apply_move(self, move):
+        if self.azul.is_game_end(self.state):
+            print("The game is over, can't do moves.")
+            return
+
         self.history.append(self.state)
 
         # Apply the move.
