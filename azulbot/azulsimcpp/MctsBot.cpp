@@ -7,8 +7,8 @@
 #include <algorithm>
 
 
-MctsBot::MctsBot(Azul& azul, const AzulState& state, int playerIndex, int samplingWidth, double_t explorationWeight)
-    :_game(azul), _root(state, Move(), nullptr), _playerIndex(playerIndex), _samplingWidth(samplingWidth), _explorationWeight(explorationWeight)
+MctsBot::MctsBot(Azul& azul, const AzulState& state, int samplingWidth, double_t explorationWeight)
+    :_game(azul), _root(state, Move(), nullptr), _playerIndex(state.nextPlayer), _samplingWidth(samplingWidth), _explorationWeight(explorationWeight)
 {
 }
 
@@ -156,6 +156,14 @@ void MctsBot::step()
         node = node->parent;
     }
     
+}
+
+Move MctsBot::step_n(uint32_t nSteps)
+{
+    for (uint32_t i = 0; i < nSteps; i++)
+        step();
+
+    return get_best_move();
 }
 
 Move MctsBot::get_best_move()

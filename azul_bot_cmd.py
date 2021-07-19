@@ -1,9 +1,8 @@
 import cmd
 from typing import *
 
-import numpy as np
-
-from azulbot.azulsim import Azul, PlayerState, Color, Move
+from azulbot.azulsim import Azul, AzulState, Move
+from azulbot.azulsim import MctsBot
 
 
 class AzulCmd(cmd.Cmd):
@@ -14,19 +13,25 @@ class AzulCmd(cmd.Cmd):
         # Init with defaults.
         super().__init__()
 
-        self.history = []  # type: List[Azul]
+        self.history = []  # type: List[AzulState]
         self.azul = Azul()
         self.state = self.azul.get_init_state()
 
         self.state = self.azul.deal_round(self.state)
 
+        self.botPlayerIndex = 0
+        self.budget = 100000
+        self.samplingWidth = 10
+        self.explorationWeight = 20
+
     def preloop(self) -> None:
         super().preloop()
 
-        self.azul.print_state()
+        Azul.print_state(self.state)
 
     def postcmd(self, stop: bool, line: str) -> bool:
-        self.azul.print_state()
+        Azul.print_state(self.state)
+
         return super().postcmd(stop, line)
 
     def do_move(self, arg: str):
@@ -39,13 +44,45 @@ class AzulCmd(cmd.Cmd):
             print("# Invalid command")
             return
 
+        self._apply_move(move)
+
+    def do_bot_move(self, arg: str):
+        bot = MctsBot(self.azul, self.state, samplingWidth=self.samplingWidth, explorationWeight=self.explorationWeight)
+        move = bot.step_n(self.budget)
+
+        print(f"Bot's move: ")
+        print(f"Take {Azul.color_to_str(move.color)} from bin {move.sourceBin} to queue {move.targetQueue}")
+
+        self._apply_move(move)
+
+    def _apply_move(self, move):
+        self.history.append(self.state)
+
         # Apply the move.
-        self.history.append(self.azul)
         try:
-            self.azul = self.azul.apply_move_without_scoring(move)
-        except IllegalMoveException as e:
+            outcome = self.azul.apply_move_without_scoring(self.state, move)
+            self.state = outcome.state
+
+            if self.azul.is_round_end(self.state):
+                self.state = self.azul.score_round(self.state)
+
+                if not self.azul.is_game_end(self.state):
+                    self.state = self.azul.deal_round(self.state)
+                else:
+                    self.state = self.azul.score_game(self.state)
+
+                    winnerIndex = int(self.state.players[0].score > self.state.players[1].score)
+                    humanIndex = 1 - self.botPlayerIndex
+                    print(f"=== Game Over! ===")
+                    print(f"{'Human' if winnerIndex != self.botPlayerIndex else 'Bot'} player wins")
+                    print(f"Scores: Bot = {self.state.players[self.botPlayerIndex].score}    "
+                          f"Human = {self.state.players[humanIndex].score}")
+
+        except ValueError as e:
             print(f"# {e}")
-            self.history.pop()
+            print("Undoing the move.")
+
+            self.state = self.history.pop()
 
     def do_undo(self, arg: str):
         if len(self.history) == 0:
@@ -53,7 +90,7 @@ class AzulCmd(cmd.Cmd):
             return
 
         print("# UNDO #")
-        self.azul = self.history.pop()
+        self.state = self.history.pop()
 
 
 def main():

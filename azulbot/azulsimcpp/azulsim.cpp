@@ -109,9 +109,10 @@ PYBIND11_MODULE(azulcpp, m)
         .def_static("get_wall_slot_color", &Azul::get_wall_slot_color);
 
     py::class_<MctsBot>(m, "MctsBot")
-        .def(py::init<Azul&, const AzulState&, int, int, double_t>(), 
-             py::arg("azul"), py::arg("state"), py::arg("playerIndex"), py::arg("samplingWidth") = 10, py::arg("explorationWeight") = 1 / 1.4142)
+        .def(py::init<Azul&, const AzulState&, int, double_t>(), 
+             py::arg("azul"), py::arg("state"), py::arg("samplingWidth") = 10, py::arg("explorationWeight") = 1 / 1.4142)
         .def("step", &MctsBot::step)
+        .def("step_n", &MctsBot::step_n)
         .def("get_best_move", &MctsBot::get_best_move);
 
 }

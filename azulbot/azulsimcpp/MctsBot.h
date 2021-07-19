@@ -10,9 +10,10 @@
 class MctsBot
 {
 public:
-    MctsBot(Azul& azul, const AzulState& state, int playerIndex, int samplingWidth = 10, double_t explorationWeight = 1 / 1.4142);
+    MctsBot(Azul& azul, const AzulState& state, int samplingWidth = 10, double_t explorationWeight = 1 / 1.4142);
 
     void step();
+    Move step_n(uint32_t nSteps);
     Move get_best_move();
 
 protected:

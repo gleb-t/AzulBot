@@ -11,10 +11,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from GridSearchManager import GridSearchManager
-from azulbot.azulsim import Azul, Move, AzulState
 from lib.StageTimer import StageTimer
-# from mcts_bot import MctsBot
+
+from azulbot.azulsim import Azul, Move, AzulState
 from azulbot.azulsim import MctsBot
+# from mcts_bot import MctsBot
 
 
 def build_random_bot():
@@ -65,7 +66,7 @@ class MctsBotWrapper:
 
     def __call__(self, state):
         azul = Azul()
-        self.bot = MctsBot(azul, state, state.nextPlayer,
+        self.bot = MctsBot(azul, state,
                            samplingWidth=self.samplingWidth, explorationWeight=self.explorationWeight)
 
         for _ in range(self.budget):
