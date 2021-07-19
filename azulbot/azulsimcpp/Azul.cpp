@@ -193,8 +193,10 @@ AzulState Azul::deal_round(const AzulState& state, const std::vector<Color>& fix
             for (uint8_t i = 0; i < next.bag[iColor]; i++)
                 population.push_back(static_cast<Color>(iColor));
 
-    	
         std::sample(population.begin(), population.end(), std::back_inserter(sample), sampleSize, _randomEngine);
+        // This sampling line is biased: it preserves the order, which is important since we subdivide into bins later
+        // and consider each tile as independent. So we have to shuffle afterwards.
+        std::shuffle(sample.begin(), sample.end(), _randomEngine);
     }
     else
     {
