@@ -17,7 +17,6 @@ class Move(MoveCpp):
         return Move(int(s[0]), Azul.str_to_color(s[1]), int(s[2]))
 
 
-
 class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
     ColorToChar = {
         Color.Empty: '_',
@@ -29,16 +28,11 @@ class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
     }
     CharToColor = dict(map(reversed, ColorToChar.items()))
 
+    def get_next_player(self, state: AzulState) -> int:
+        return state.nextPlayer
+
     def get_init_state(self) -> AzulState:
         return AzulState()
-
-    # def get_score(self, state: AzulState, playerIndex: int) -> float:
-    #     maxScore = max([p.score for p in state.players])
-    #     isMax = state.players[playerIndex].score == maxScore
-    #     # Draws should be losses.
-    #     isOnly = sum(1 for p in state.players if p.score == maxScore) == 1
-    #
-    #     return int(isMax and isOnly)
 
     @staticmethod
     def print_state(state: AzulState):

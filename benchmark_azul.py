@@ -14,8 +14,8 @@ from GridSearchManager import GridSearchManager
 from lib.StageTimer import StageTimer
 
 from azulbot.azulsim import Azul, Move, AzulState
-from azulbot.azulsim import MctsBot
-# from mcts_bot import MctsBot
+from azulbot.azulsim import MctsBot as MctsBotCpp
+from mcts_bot import MctsBot as MctsBotPy
 
 
 def build_random_bot():
@@ -59,15 +59,16 @@ def build_greedy_bot():
 
 class MctsBotWrapper:
 
-    def __init__(self, budget: int, samplingWidth: int, explorationWeight: float):
+    def __init__(self, budget: int, samplingWidth: int, explorationWeight: float, botClass: type = MctsBotCpp):
         self.budget = budget
         self.samplingWidth = samplingWidth
         self.explorationWeight = explorationWeight
+        self.botClass = botClass
 
     def __call__(self, state):
         azul = Azul()
-        self.bot = MctsBot(azul, state,
-                           samplingWidth=self.samplingWidth, explorationWeight=self.explorationWeight)
+        self.bot = self.botClass(azul, state,
+                                 samplingWidth=self.samplingWidth, explorationWeight=self.explorationWeight)
 
         for _ in range(self.budget):
             self.bot.step()
@@ -78,16 +79,15 @@ class MctsBotWrapper:
 def main():
     gamesToPlay = 30
     maxRoundsPerGame = 100
-    # mctsBudgets = [1000, 10000, 100000, 1000000]
-    mctsBudgets = [100, 1000, 10000]
     samplingWidth = 10
-    explorationWeight = 10
+    botClass = MctsBotCpp
+    # botClass = MctsBotPy
 
     searchManager = GridSearchManager(defaultConfig={})
-    searchManager.add_param_axis('mctsBudget', [100, 1000, 10000, 100000, 300000])
-    # searchManager.add_param_axis('mctsBudget', [100, 1000])
-    searchManager.add_param_axis('explorationWeight', [10, 20, 50])
-    # searchManager.add_param_axis('explorationWeight', [5, 10])
+    # searchManager.add_param_axis('mctsBudget', [100, 1000, 10000, 100000, 300000])
+    searchManager.add_param_axis('mctsBudget', [100, 1000, 10000])
+    # searchManager.add_param_axis('explorationWeight', [20, 30, 50])
+    searchManager.add_param_axis('explorationWeight', [20])
 
     outDirPath = Path(os.environ['DEV_OUT_PATH']) / 'azul_bot' if 'DEV_OUT_PATH' in os.environ else Path.cwd()
     outDirPath.mkdir(parents=True, exist_ok=True)
@@ -97,7 +97,9 @@ def main():
     for config, _, _ in searchManager.generate_configuration():
         azul = Azul()
         # players = [build_random_bot(), build_mcts_bot(mctsBudget)]
-        players = [build_greedy_bot(), MctsBotWrapper(config['mctsBudget'], samplingWidth, config['explorationWeight'])]
+        players = [build_greedy_bot(),
+                   MctsBotWrapper(config['mctsBudget'], samplingWidth, config['explorationWeight'],
+                                  botClass=botClass)]
         scores = []
         timePerMove = []
 
@@ -174,7 +176,8 @@ def main():
     print("Plotting.")
     resultTable = pd.DataFrame(resultRows)
     print(resultTable)
-    resultTable = resultTable[resultTable['player'] == 'mcts']
+
+    # resultTable = resultTable[resultTable['player'] == 'mcts']
     ax = sns.boxplot(x='budget', y='score', hue='explorationWeight', data=resultTable)
     date = datetime.now()
     dateStr = date.strftime("%y%m%d-%H%M%S")

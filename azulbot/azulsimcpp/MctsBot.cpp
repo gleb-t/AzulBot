@@ -146,13 +146,19 @@ void MctsBot::step()
         terminalState = node->state;
     }
 
-    const uint32_t score = _game.get_score(terminalState, _playerIndex);
+    const std::array<uint32_t, 2> scores{_game.get_score(terminalState, 0),
+                                         _game.get_score(terminalState, 1)};
 
     // Update the parents;
-    while (node != nullptr)
+    while (true)
     {
         node->plays += 1;
-        node->scores += score;
+        if (node->parent == nullptr)
+            break;
+        // Update the node with score of the player whose action led to the node state. I.e., the previous player.
+        // Also, we don't assume it's just the other player (like in Azul), and get the prev. player explicitly.
+        const AzulState& prevState = !node->parent->isRandom ? node->parent->state : node->parent->parent->state;
+        node->scores += scores[prevState.nextPlayer];
         node = node->parent;
     }
     

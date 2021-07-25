@@ -22,15 +22,14 @@ class Node:
 
 class MctsBot:
 
-    ExplorationWeight = 1 / 1.4142
-
-    def __init__(self, game: Game[GameState, TMove], state: GameState, playerIndex: int,
-                 samplingWidth: int = 10):
+    def __init__(self, game: Game[GameState, TMove], state: GameState,
+                 samplingWidth: int = 10, explorationWeight: float = 1 / 1.4142):
 
         self.game = game
         self.root = Node(state.copy(), move=None, parent=None)
-        self.playerIndex = playerIndex
+        self.playerIndex = self.game.get_next_player(state)
         self.samplingWidth = samplingWidth
+        self.explorationWeight = explorationWeight
 
     def step(self):
 
@@ -79,12 +78,17 @@ class MctsBot:
             # We're already in the terminal state, just reuse the result.
             terminalState = node.state
 
-        isWinInt = self.game.get_score(terminalState, self.playerIndex)
+        # todo We're not handling draws here.
+        winnerIndex = self.game.get_score(terminalState, 0) >= self.game.get_score(terminalState, 1)
 
         # Update the parents.
-        while node is not None:
+        while True:
             node.plays += 1
-            node.wins += isWinInt
+            if node.parent is None:
+                break
+            # Count the wins fro mthe perspective of the player whose move led to this node.
+            prevState = node.parent.state if not node.parent.isRandom else node.parent.parent.state
+            node.wins += int(self.game.get_next_player(prevState) == winnerIndex)
             node = node.parent
 
     def get_best_move(self):
@@ -95,14 +99,13 @@ class MctsBot:
 
         return node.move
 
-    @staticmethod
-    def _select_max_uct(nodes: Sequence[Node], parentPlays: int):
+    def _select_max_uct(self, nodes: Sequence[Node], parentPlays: int):
         bestIndices, bestVal = [], -1
         for i, node in enumerate(nodes):
             if node.plays == 0:
                 return node
 
-            uct = node.wins / node.plays + MctsBot.ExplorationWeight * math.sqrt(math.log(parentPlays) / node.plays)
+            uct = node.wins / node.plays + self.explorationWeight * math.sqrt(math.log(parentPlays) / node.plays)
 
             if uct > bestVal:
                 bestVal = uct
