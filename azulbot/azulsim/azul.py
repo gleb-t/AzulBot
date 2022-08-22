@@ -11,10 +11,18 @@ class PybindAbcMeta(type(Game), type(AzulCpp)):
 
 
 class Move(MoveCpp):
+    PossibleMoveNumber = AzulCpp.BinNumber * AzulCpp.WallSize * AzulCpp.ColorNumber
 
     @staticmethod
     def from_str(s: str) -> 'Move':
         return Move(int(s[0]), Azul.str_to_color(s[1]), int(s[2]))
+
+    def to_int(self) -> int:
+        assert self.color != Color.Empty
+
+        return self.sourceBin   * (AzulCpp.WallSize * AzulCpp.ColorNumber) + \
+               self.targetQueue *                     AzulCpp.ColorNumber  + \
+               int(self.color) - 1  # Color 0 is unused, so subtract one.
 
 
 class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
