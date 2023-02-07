@@ -24,6 +24,14 @@ class Move(MoveCpp):
                self.targetQueue *                     AzulCpp.ColorNumber  + \
                int(self.color) - 1  # Color 0 is unused, so subtract one.
 
+    @classmethod
+    def from_int(cls, value) -> 'Move':
+        sourceBin, remainder = divmod(value, (AzulCpp.WallSize * AzulCpp.ColorNumber))
+        targetQueue, remainder = divmod(remainder, AzulCpp.ColorNumber)
+        color = Color(remainder + 1)
+
+        return Move(sourceBin, color, targetQueue)
+
 
 class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
     ColorToChar = {
@@ -41,6 +49,9 @@ class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
 
     def get_init_state(self) -> AzulState:
         return AzulState()
+
+    def enumerate_moves_as_int(self, state: AzulState) -> List[int]:
+        return [m.to_int() for m in self.enumerate_moves(state)]
 
     @staticmethod
     def print_state(state: AzulState):

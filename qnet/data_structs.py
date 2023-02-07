@@ -9,22 +9,45 @@ from typing import *
 from azulbot.azulsim import Azul, Move, Color, AzulState, PlayerState
 
 
-class AzulObs:
-    # The players do not see the bag.
-    # bag: List[int]
-    bins: List[List[int]]
-    players: List[PlayerState]
+# class AzulObs:
+#     # The players do not see the bag, but they could memorize what's left in it.
+#     # We include the bag in the observation, so that the game is fully obesrvable.
+#     bag: List[int]
+#
+#     bins: List[List[int]]
+#     players: List[PlayerState]
+#
+#     nextPlayer: int
+#     firstPlayer: int
+#     poolWasTouched: bool
+#
+#     roundIndex: int
+#     turnIndex: int
+#
+#     def __init__(self, state: AzulState):
+#         self.bag = state.bag
+#         self.bins = copy.deepcopy(state.bins)
+#         self.players = copy.deepcopy(state.players)
+#
+#         self.nextPlayer = state.nextPlayer
+#         self.firstPlayer = state.firstPlayer
+#         self.poolWasTouched = state.poolWasTouched
+#
+#         self.roundIndex = state.roundIndex
+#         self.turnIndex = state.turnIndex
 
-    nextPlayer: int
-    firstPlayer: int
-    poolWasTouched: bool
+# Currently the observation is the same as the state. So we just reuse the type.
+# However, we swap the players so that the 'current' player is always first.
+class AzulObs(AzulState):
 
-    roundIndex: int
-    turnIndex: int
-
-    def __init__(self, state: AzulState):
+    def __init__(self, state: AzulState, player_index):
+        self.bag = copy.deepcopy(state.bag)
         self.bins = copy.deepcopy(state.bins)
         self.players = copy.deepcopy(state.players)
+
+        if player_index != 0:
+            assert player_index == 1
+            self.players = [self.players[1], self.players[0]]
 
         self.nextPlayer = state.nextPlayer
         self.firstPlayer = state.firstPlayer

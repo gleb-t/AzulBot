@@ -10,9 +10,8 @@ import torchsummary
 
 
 from losses import q_loss
-from bots.tictac.agent import RandomAgent, QAgent, e_greedy_policy_factory
 from qnet.data_structs import Episode, DataPoint, Transition, DataTensors
-
+from qnet.model import AzulQNet
 
 
 def main():
@@ -22,7 +21,7 @@ def main():
     games_per_epoch = 128
 
     net_memory_length = 1
-    net_hidden_number = 512
+    net_hidden_number = 64
 
     train_batch_size = 128
     train_lr = 1e-3
@@ -48,7 +47,9 @@ def main():
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     dtype = torch.float32
 
-    q_net = TicTacQNet(net_memory_length, net_hidden_number).to(device)
+    print(f"Training on device {device}")
+
+    q_net = AzulQNet(net_memory_length, net_hidden_number).to(device)
     optimizer = torch.optim.Adam(q_net.parameters(), lr=train_lr)
 
     # Train on random agent data.
