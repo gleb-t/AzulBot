@@ -55,7 +55,24 @@ PYBIND11_MODULE(azulcpp, m)
         .def("set_queue", &PlayerState::set_queue)
 
         .def("__eq__", [](const PlayerState& p1, const PlayerState& p2) { return p1 == p2;})
-        .def("__hash__", &PlayerState::hash);
+        .def("__hash__", &PlayerState::hash)
+        .def(py::pickle(  // Implement the pickling methods to support copy.deepcopy.
+            [](const PlayerState& p) { // __getstate__
+                return py::make_tuple(p.wall, p.queue, p.floorCount, p.score);
+            },
+            [](py::tuple t) { // __setstate__
+                if (t.size() != 4)
+                    throw std::runtime_error("Invalid state length.");
+                
+                PlayerState p{};
+                p.wall = t[0].cast<std::array<std::array<Color, Azul::WallSize>, Azul::WallSize>>();
+                p.queue = t[1].cast<std::array<std::array<uint8_t, 2>, Azul::WallSize>>();
+                p.floorCount = t[2].cast<uint8_t>();
+                p.floorCount = t[3].cast<uint32_t>();
+
+                return p;
+            }
+        ));
 
 
     py::class_<AzulState>(m, "AzulState")

@@ -20,7 +20,7 @@ class Move:
 
 
 class PlayerState:
-    wall: List[List[int]]
+    wall: List[List[Color]]
     queue: List[List[int]]
     floorCount: int
     score: int
