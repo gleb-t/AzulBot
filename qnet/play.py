@@ -1,14 +1,14 @@
 from abc import ABCMeta, abstractmethod
 from typing import *
 
-from azulbot.azulsim import Azul, AzulState, Move, MoveOutcome
+from azulbot.azulsim import Azul, AzulState, Move
 from qnet.data_structs import AzulObs
 
 
 MaxRoundsTimeout = 20
 
 
-class AzulPlayer(metaclass=ABCMeta):
+class AzulAgent(metaclass=ABCMeta):
     @abstractmethod
     def choose_action(self, obs: AzulObs, valid_actions: List[Move]) -> Move:
         ...
@@ -22,7 +22,7 @@ class AzulPlayer(metaclass=ABCMeta):
         ...
 
 
-def play_azul_game(players: List[AzulPlayer], state: Optional[AzulState] = None, use_score_as_reward: bool = True):
+def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, use_score_as_reward: bool = True):
     assert len(players) == 2
     assert use_score_as_reward
 

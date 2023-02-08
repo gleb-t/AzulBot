@@ -41,6 +41,8 @@ from azulbot.azulsim import Azul, Move, Color, AzulState, PlayerState
 class AzulObs(AzulState):
 
     def __init__(self, state: AzulState, player_index):
+        super().__init__()
+
         self.bag = copy.deepcopy(state.bag)
         self.bins = copy.deepcopy(state.bins)
         self.players = copy.deepcopy(state.players)

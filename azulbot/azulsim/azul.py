@@ -50,6 +50,10 @@ class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
     def get_init_state(self) -> AzulState:
         return AzulState()
 
+    def enumerate_moves(self, state: AzulState) -> List[Move]:
+        # Wrap in the Python type.
+        return [Move(m.sourceBin, m.color, m.targetQueue) for m in super().enumerate_moves(state)]
+
     def enumerate_moves_as_int(self, state: AzulState) -> List[int]:
         return [m.to_int() for m in self.enumerate_moves(state)]
 

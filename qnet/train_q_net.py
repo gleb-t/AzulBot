@@ -9,9 +9,12 @@ import torch.nn.functional
 import torchsummary
 
 
-from losses import q_loss
-from qnet.data_structs import Episode, DataPoint, Transition, DataTensors
+from qnet.loss import q_loss
+
+from qnet.agent import AzulQNetAgent, e_greedy_policy_sampler_factory, greedy_policy_sampler, AzulRandomAgent
+from qnet.data_structs import Episode, DataPoint, Transition
 from qnet.model import AzulQNet
+from qnet.play import play_azul_game
 
 
 def main():
@@ -20,8 +23,8 @@ def main():
     epoch_number = 2000
     games_per_epoch = 128
 
-    net_memory_length = 1
-    net_hidden_number = 64
+    net_history_len = 1
+    net_enc_size = 64
 
     train_batch_size = 128
     train_lr = 1e-3
@@ -49,16 +52,16 @@ def main():
 
     print(f"Training on device {device}")
 
-    q_net = AzulQNet(net_memory_length, net_hidden_number).to(device)
+    q_net = AzulQNet(net_history_len, net_enc_size).to(device)
     optimizer = torch.optim.Adam(q_net.parameters(), lr=train_lr)
 
     # Train on random agent data.
-    q_agent_train = QAgent(q_net, policy_sampler=e_greedy_policy_factory(train_eps_max))
-    q_agent_eval = QAgent(q_net)
-    agents = [q_agent_train, RandomAgent()]
+    q_agent_train = AzulQNetAgent(q_net, policy_sampler=e_greedy_policy_sampler_factory(train_eps_max))
+    q_agent_eval = AzulQNetAgent(q_net, policy_sampler=greedy_policy_sampler)
+    agents = [q_agent_train, AzulRandomAgent()]
 
     print("Built the Q-Net.")
-    torchsummary.summary(q_net, (net_memory_length, *TicTacQNet.ObsShape))
+    torchsummary.summary(q_net, (net_history_len, AzulQNet.ObsSize))
 
     replay_buffer = []  # type: List[Episode]
 
@@ -67,11 +70,12 @@ def main():
         loss_epoch = 0.0
 
         # ---------------- Collect play data. ----------------
+        print(f"Playing {games_per_epoch} games.")
         episodes = []
         for i_game in range(games_per_epoch):
-            winner_color, win_reason, _ = play_local_game(agents[0], agents[1], TicTacToe())
+            winner_color, win_reason, _ = play_azul_game(agents)
 
-            # We only train on the white player's perspective for now.
+            # We only train on the first player's perspective for now.
             history_mine = agents[0].history
             # history_opp = agents[1].history
 
@@ -88,6 +92,7 @@ def main():
             raise ValueError()
 
         # ---------------- Train the model. ----------------
+        print("Training the model.")
         # Enumerate the steps by their global index for convenience.
         step_index = i_epoch * steps_per_epoch
         for i_step in range(step_index, step_index + steps_per_epoch):
@@ -101,7 +106,7 @@ def main():
                 # Sample a transition and extract its history.
                 t_now = random.randint(0, len(episode) - 2)
                 transition_history = []
-                for t in range(t_now - net_memory_length + 1, t_now + 2):  # From n steps ago up to next.
+                for t in range(t_now - net_history_len + 1, t_now + 2):  # From n steps ago up to next.
                     if t >= 0:
                         transition_history.append(episode.transitions[t])
                     else:  # Pad the history with empty transitions.
