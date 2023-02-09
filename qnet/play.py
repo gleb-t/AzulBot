@@ -44,15 +44,17 @@ def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, 
         old_scores = [p.score for p in state.players]
         state = azul.score_round(state)
 
-        if azul.is_game_end(state):
+        # Score the game if it's over this round and update the reward.
+        is_game_end = azul.is_game_end(state)
+        if is_game_end:
             state = azul.score_game(state)
 
         if use_score_as_reward:
             rewards = [p.score - old for p, old in zip(state.players, old_scores)]
             for player, reward in zip(players, rewards):
-                player.set_last_reward(reward, False)
+                player.set_last_reward(reward, is_game_end)
 
-        if azul.is_game_end(state):
+        if is_game_end:
             break
 
     print(f"Finished a game with scores {state.players[0].score} - {state.players[1].score}")

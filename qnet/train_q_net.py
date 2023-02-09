@@ -40,6 +40,9 @@ def main():
     train_data_mode = 'fresh-data'
     fixed_data_epoch_number = 10
 
+    # === DEBUG ===
+    games_per_epoch = 5
+
     # wandb_description = 'fresh-data_true-state_online_eps-sched'
     #
     # wandb.init(project="recon_tictactoe", entity="not-working-solutions", )
@@ -79,7 +82,10 @@ def main():
             history_mine = agents[0].history
             # history_opp = agents[1].history
 
-            episodes.append(Episode(history_mine))
+            assert history_mine[-1].done
+
+            # Append an empty transition at the end. Make the q-loss computation simpler.
+            episodes.append(Episode(history_mine + [Transition.get_empty_transition()]))
 
         if train_data_mode == 'replay-buffer':
             replay_buffer.extend(episodes)
@@ -103,7 +109,7 @@ def main():
                 # Sample an episode, weighted by episode length so all transitions are equally likely.
                 episode = random.choices(replay_buffer, weights=[len(e) for e in replay_buffer], k=1)[0]
 
-                # Sample a transition and extract its history.
+                # Sample a transition and extract its history. Exclude the last transition because it's empty.
                 t_now = random.randint(0, len(episode) - 2)
                 transition_history = []
                 for t in range(t_now - net_history_len + 1, t_now + 2):  # From n steps ago up to next.

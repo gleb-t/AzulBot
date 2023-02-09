@@ -6,7 +6,7 @@ from typing import *
 import numpy as np
 import torch
 
-from qnet.data_structs import AzulObs
+from qnet.data_structs import AzulObs, DataPoint, DataTensors
 from azulbot.azulsim import Azul, PlayerState, Move
 
 
@@ -23,6 +23,7 @@ class AzulQNet(torch.nn.Module):
                  dtype: torch.dtype = torch.float32):
         super().__init__()
 
+        # todo Should we rely on dtype/device detection, or set them explicitly during construction?
         self.dtype = dtype
 
         self.history_len = history_len
@@ -82,32 +83,28 @@ class AzulQNet(torch.nn.Module):
 
         return move_q
 
-    # def convert_transitions_to_tensors(self, data_raw: List[DataPoint]):
-    #     raise NotImplementedError()
-    #
-    #     data_n = len(data_raw)
-    #
-    #     # Use the same device and dtype as the network itself.
-    #     dtype, device = self._detect_dtype_and_device()
-    #
-    #     data_obs = torch.empty((data_n, self.history_len, *self.ObsSize), dtype=dtype, device=device)
-    #     data_obs_next = torch.empty((data_n, self.history_len, *self.ObsSize), dtype=dtype, device=device)
-    #     data_act = torch.empty((data_n, 1), dtype=torch.int64, device=device)
-    #     data_act_next_mask = torch.zeros((data_n, Board.Size ** 2), dtype=torch.int64, device=device)
-    #     data_rew = torch.empty((data_n, 1), dtype=dtype, device=device)
-    #     data_done = torch.empty((data_n, 1), dtype=dtype, device=device)
-    #     data_is_move = torch.empty((data_n, 1), dtype=dtype, device=device)
-    #
-    #     for i_sample, point in enumerate(data_raw):
-    #         data_obs[i_sample, ...] = self.obs_list_to_tensor([t.observation for t in point.history_now])
-    #         data_obs_next[i_sample, ...] = self.obs_list_to_tensor([t.observation for t in point.history_next])
-    #         data_act[i_sample] = point.transition_now.action
-    #         data_act_next_mask[i_sample, point.transition_next.valid_actions] = 1
-    #         data_rew[i_sample] = point.transition_now.reward
-    #         data_done[i_sample] = point.transition_now.done
-    #         data_is_move[i_sample] = int(point.transition_now.is_move)
-    #
-    #     return DataTensors(data_obs, data_obs_next, data_act, data_act_next_mask, data_rew, data_done, data_is_move)
+    def convert_transitions_to_tensors(self, data_raw: List[DataPoint]):
+        data_n = len(data_raw)
+
+        # Use the same device and dtype as the network itself.
+        dtype, device = self._detect_dtype_and_device()
+
+        data_obs = torch.empty((data_n, self.history_len, self.ObsSize), dtype=dtype, device=device)
+        data_obs_next = torch.empty((data_n, self.history_len, self.ObsSize), dtype=dtype, device=device)
+        data_act = torch.empty((data_n, 1), dtype=torch.int64, device=device)
+        data_act_next_mask = torch.zeros((data_n, Move.PossibleMoveNumber), dtype=torch.int64, device=device)
+        data_rew = torch.empty((data_n, 1), dtype=dtype, device=device)
+        data_done = torch.empty((data_n, 1), dtype=dtype, device=device)
+
+        for i_sample, point in enumerate(data_raw):
+            data_obs[i_sample, ...] = self.obs_list_to_tensor([t.obs for t in point.history_now])
+            data_obs_next[i_sample, ...] = self.obs_list_to_tensor([t.obs for t in point.history_next])
+            data_act[i_sample] = point.transition_now.action.to_int()
+            data_act_next_mask[i_sample, point.transition_next.get_valid_actions_int()] = 1
+            data_rew[i_sample] = point.transition_now.reward
+            data_done[i_sample] = int(point.transition_now.done)
+
+        return DataTensors(data_obs, data_obs_next, data_act, data_act_next_mask, data_rew, data_done)
 
     def obs_list_to_tensor(self, obs_list: List[AzulObs]) -> torch.Tensor:
 
