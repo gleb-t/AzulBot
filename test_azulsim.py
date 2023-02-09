@@ -377,14 +377,16 @@ class TestAzul(unittest.TestCase):
         self.assertTrue(azul.is_game_end(state))
 
     def test_move_to_and_from_int(self):
-        for sourceBin in range(Azul.BinNumber):
-            for targetQueue in range(Azul.WallSize):
+        for sourceBin in range(Azul.BinNumber + 1):
+            for targetQueue in range(Azul.WallSize + 1):
                 for color in [Color.Blue, Color.Yellow, Color.Red, Color.Black, Color.White]:
 
                     move = Move(sourceBin, color, targetQueue)
                     value = move.to_int()
                     move_after = Move.from_int(value)
 
+                    self.assertGreaterEqual(value, 0)
+                    self.assertLess(value, Move.PossibleMoveNumber)
                     self.assertEqual(move.sourceBin, move_after.sourceBin)
                     self.assertEqual(move.color, move_after.color)
                     self.assertEqual(move.targetQueue, move_after.targetQueue)

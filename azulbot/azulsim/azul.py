@@ -11,7 +11,9 @@ class PybindAbcMeta(type(Game), type(AzulCpp)):
 
 
 class Move(MoveCpp):
-    PossibleMoveNumber = AzulCpp.BinNumber * AzulCpp.WallSize * AzulCpp.ColorNumber
+    MoveSourceNumber = AzulCpp.BinNumber + 1  # Plus one, because the pool is also a source.
+    MoveTargetNumber = AzulCpp.WallSize + 1  # Plus one, because the floor is also a target.
+    PossibleMoveNumber = MoveSourceNumber * MoveTargetNumber * AzulCpp.ColorNumber
 
     @staticmethod
     def from_str(s: str) -> 'Move':
@@ -20,13 +22,13 @@ class Move(MoveCpp):
     def to_int(self) -> int:
         assert self.color != Color.Empty
 
-        return self.sourceBin   * (AzulCpp.WallSize * AzulCpp.ColorNumber) + \
-               self.targetQueue *                     AzulCpp.ColorNumber  + \
+        return self.sourceBin   * (self.MoveTargetNumber * AzulCpp.ColorNumber) + \
+               self.targetQueue *                          AzulCpp.ColorNumber  + \
                int(self.color) - 1  # Color 0 is unused, so subtract one.
 
     @classmethod
     def from_int(cls, value) -> 'Move':
-        sourceBin, remainder = divmod(value, (AzulCpp.WallSize * AzulCpp.ColorNumber))
+        sourceBin, remainder = divmod(value, (cls.MoveTargetNumber * AzulCpp.ColorNumber))
         targetQueue, remainder = divmod(remainder, AzulCpp.ColorNumber)
         color = Color(remainder + 1)
 

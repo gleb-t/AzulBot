@@ -41,7 +41,7 @@ class AzulQNetAgent(AzulAgent):
         self.policy_sampler = policy_sampler or greedy_policy_sampler
 
     def choose_action(self, obs: AzulObs, valid_actions: List[Move]) -> Move:
-        recent_obs_history = [transition.obs for transition in self.history[-(self.q_net.history_len - 1):]]
+        recent_obs_history = self._get_last_n_observations(self.q_net.history_len - 1)
         recent_obs_history.append(obs)
 
         # Convert the recent history to a tensor.
@@ -49,7 +49,7 @@ class AzulQNetAgent(AzulAgent):
         net_input = net_input.unsqueeze(0)  # Add the batch dimension.
 
         # Evaluate the network and choose an action.
-        q_action = self.q_net(net_input)  # type: torch.Tensor
+        q_action = self.q_net(net_input).squeeze()  # type: torch.Tensor
         action_index = self.policy_sampler(q_action, [m.to_int() for m in valid_actions])
 
         # Record the transition in the history.
@@ -64,6 +64,15 @@ class AzulQNetAgent(AzulAgent):
 
     def handle_game_start(self):
         self.history = []
+
+    def _get_last_n_observations(self, n: int) -> List[AzulObs]:
+        len_ = len(self.history)
+        # Grab the last n observations.
+        result = [self.history[i].obs for i in range(max(0, len_ - n), len_)]
+        # Now pad the result with empty observations if necessary.
+        result = [AzulObs.empty()] * (n - len(result)) + result
+
+        return result
 
 
 class AzulRandomAgent(AzulAgent):

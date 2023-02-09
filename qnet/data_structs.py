@@ -58,6 +58,10 @@ class AzulObs(AzulState):
         self.roundIndex = state.roundIndex
         self.turnIndex = state.turnIndex
 
+    @classmethod
+    def empty(cls) -> 'AzulObs':
+        return AzulObs(AzulState(), 0)
+
 
 @dataclass
 class Transition:

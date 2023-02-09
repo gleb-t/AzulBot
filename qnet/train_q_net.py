@@ -73,7 +73,7 @@ def main():
         print(f"Playing {games_per_epoch} games.")
         episodes = []
         for i_game in range(games_per_epoch):
-            winner_color, win_reason, _ = play_azul_game(agents)
+            winner_index = play_azul_game(agents)
 
             # We only train on the first player's perspective for now.
             history_mine = agents[0].history

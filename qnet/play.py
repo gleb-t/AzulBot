@@ -22,7 +22,7 @@ class AzulAgent(metaclass=ABCMeta):
         ...
 
 
-def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, use_score_as_reward: bool = True):
+def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, use_score_as_reward: bool = True) -> int:
     assert len(players) == 2
     assert use_score_as_reward
 
@@ -38,7 +38,7 @@ def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, 
             obs = AzulObs(state, state.nextPlayer)
             valid_actions = azul.enumerate_moves(state)
 
-            move, move_callback = players[state.nextPlayer].choose_action(obs, valid_actions)
+            move = players[state.nextPlayer].choose_action(obs, valid_actions)
             state = azul.apply_move_without_scoring(state, move).state
 
         old_scores = [p.score for p in state.players]
@@ -56,3 +56,6 @@ def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, 
             break
 
     print(f"Finished a game with scores {state.players[0].score} - {state.players[1].score}")
+    winner_index = 1 if state.players[1].score > state.players[0].score else 0  # Favor player #1 in ties.
+
+    return winner_index
