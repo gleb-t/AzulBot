@@ -7,10 +7,9 @@ import numpy as np
 import torch
 import torch.nn.functional
 import torchsummary
-
+from tqdm import tqdm
 
 from qnet.loss import q_loss
-
 from qnet.agent import AzulQNetAgent, e_greedy_policy_sampler_factory, greedy_policy_sampler, AzulRandomAgent
 from qnet.data_structs import Episode, DataPoint, Transition
 from qnet.model import AzulQNet
@@ -41,7 +40,8 @@ def main():
     fixed_data_epoch_number = 10
 
     # === DEBUG ===
-    games_per_epoch = 5
+    # games_per_epoch = 5
+    # eval_games = 10
 
     # wandb_description = 'fresh-data_true-state_online_eps-sched'
     #
@@ -73,7 +73,6 @@ def main():
         loss_epoch = 0.0
 
         # ---------------- Collect play data. ----------------
-        print(f"Playing {games_per_epoch} games.")
         episodes = []
         for i_game in range(games_per_epoch):
             winner_index = play_azul_game(agents)
@@ -83,9 +82,7 @@ def main():
             # history_opp = agents[1].history
 
             assert history_mine[-1].done
-
-            # Append an empty transition at the end. Make the q-loss computation simpler.
-            episodes.append(Episode(history_mine + [Transition.get_empty_transition()]))
+            episodes.append(Episode(history_mine))
 
         if train_data_mode == 'replay-buffer':
             replay_buffer.extend(episodes)
@@ -98,10 +95,9 @@ def main():
             raise ValueError()
 
         # ---------------- Train the model. ----------------
-        print("Training the model.")
         # Enumerate the steps by their global index for convenience.
         step_index = i_epoch * steps_per_epoch
-        for i_step in range(step_index, step_index + steps_per_epoch):
+        for i_step in tqdm(range(step_index, step_index + steps_per_epoch), desc=f"Epoch {i_epoch}"):
 
             # --- Sample the train transitions with history.
             data_raw = []
@@ -126,66 +122,62 @@ def main():
             # --- Update the model.
             optimizer.zero_grad()
 
-            q_sense_now, q_move_now = q_net(data.obs)
-            q_sense_next, q_move_next = q_net(data.obs_next)
+            q_now = q_net(data.obs)
+            q_next = q_net(data.obs_next)
 
             # Mask the invalid actions.
-            q_move_next[data.act_next_mask == 0] = torch.finfo(dtype).min
+            q_next[data.act_next_mask == 0] = torch.finfo(dtype).min
 
-            # Q-sense is updated with the next q-move (and vice versa), because that's the next agent's action.
-            loss_sense = torch.sum((1 - data.is_move) * q_loss(q_sense_now, q_move_next,  data.act, data.rew, data.done))
-            loss_move  = torch.sum(     data.is_move  * q_loss(q_move_now,  q_sense_next, data.act, data.rew, data.done))
-
-            loss_total = loss_move + train_weight_sense * loss_sense
+            # Compute the loss.
+            loss_total = torch.sum(q_loss(q_now,  q_next, data.act, data.rew, data.done))
 
             loss_total.backward()
             optimizer.step()
 
             loss_epoch += loss_total.item()
 
-            wandb.log(step=i_step, data={
-                "loss_total_step": loss_total.item(),
-                "loss_move_step": loss_move.item(),
-                "loss_sense_step": loss_sense.item(),
-            })
+            # wandb.log(step=i_step, data={
+            #     "loss_total_step": loss_total.item(),
+            #     "loss_move_step": loss_move.item(),
+            #     "loss_sense_step": loss_sense.item(),
+            # })
 
-            # print(f"Step: {i_step} | Total: {loss_total.item():.2f} "
-            #       f"Move: {loss_move.item():.2f} Sense: {loss_sense.item():.2f}")
+            # print(f"Step: {i_step} | Loss: {loss_total.item():.2f}")
 
         loss_epoch /= steps_per_epoch
 
-        step_index = ((i_epoch + 1) * steps_per_epoch - 1)  # Compute the last step index.
-        wandb.log(step=step_index, data={"loss_total_epoch": loss_epoch})
+        # step_index = ((i_epoch + 1) * steps_per_epoch - 1)  # Compute the last step index.
+        # wandb.log(step=step_index, data={"loss_total_epoch": loss_epoch})
 
-        # --- Update the eps-policy.
+        # --- Update the eps-policy on a schedule.
         t = i_epoch / epoch_number
         eps = train_eps_max * math.cos(t * math.pi / 2) + train_eps_min
-        q_agent_train.policy_sampler = e_greedy_policy_factory(eps)
-        wandb.log(step=step_index, data={"eps": eps})
+        q_agent_train.policy_sampler = e_greedy_policy_sampler_factory(eps)
+        # wandb.log(step=step_index, data={"eps": eps})
 
         # --- Winrate evaluation.
         if i_epoch % eval_freq_epochs == 0:
             win_count = 0
-            for i_game in range(eval_games):
-                winner_color, win_reason, _ = play_local_game(q_agent_eval, agents[1], TicTacToe())
-                if winner_color == Player.Cross:
+            for i_game in tqdm(range(eval_games), desc=f"Eval epoch {i_epoch}"):
+                winner_index = play_azul_game([q_agent_eval, agents[1]])
+                if winner_index == 0:
                     win_count += 1
 
             winrate = win_count / eval_games
             print(f"Eval winrate: {winrate}")
-            wandb.log(step=step_index, data={"winrate": winrate})
+            # wandb.log(step=step_index, data={"winrate": winrate})
 
-            # Enter the plotting context
-            with plotting_mode():
-                # Set plotting directories for player and opponent (they'll be created if non-existant)
-                q_agent_eval.plot_directory = os.path.join(plotting_dir, f"player_{i_epoch}")
-                agents[1].plot_directory = os.path.join(plotting_dir, f"opponent_{i_epoch}")
-
-                play_local_game(q_agent_eval, agents[1], TicTacToe())
-
-            # --- Sync game renders to WANDB.
-            if i_epoch % 100 == 0:
-                wandb.save("games/*")
+            # # Enter the plotting context
+            # with plotting_mode():
+            #     # Set plotting directories for player and opponent (they'll be created if non-existant)
+            #     q_agent_eval.plot_directory = os.path.join(plotting_dir, f"player_{i_epoch}")
+            #     agents[1].plot_directory = os.path.join(plotting_dir, f"opponent_{i_epoch}")
+            #
+            #     play_local_game(q_agent_eval, agents[1], TicTacToe())
+            #
+            # # --- Sync game renders to WANDB.
+            # if i_epoch % 100 == 0:
+            #     wandb.save("games/*")
 
         print(f"Epoch {i_epoch}  Loss: {loss_epoch}")
 

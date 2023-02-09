@@ -34,6 +34,10 @@ class Move(MoveCpp):
 
         return Move(sourceBin, color, targetQueue)
 
+    @classmethod
+    def empty(cls):
+        return Move(0, Color.Empty, 0)
+
 
 class Azul(AzulCpp, Game[AzulState, Move], metaclass=PybindAbcMeta):
     ColorToChar = {

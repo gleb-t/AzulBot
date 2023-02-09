@@ -68,7 +68,7 @@ PYBIND11_MODULE(azulcpp, m)
                 p.wall = t[0].cast<std::array<std::array<Color, Azul::WallSize>, Azul::WallSize>>();
                 p.queue = t[1].cast<std::array<std::array<uint8_t, 2>, Azul::WallSize>>();
                 p.floorCount = t[2].cast<uint8_t>();
-                p.floorCount = t[3].cast<uint32_t>();
+                p.score = t[3].cast<uint32_t>();
 
                 return p;
             }

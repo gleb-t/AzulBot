@@ -53,6 +53,10 @@ class Transition:
     def get_empty_transition():
         return Transition(AzulObs.empty(), Move(0, Color.Empty, Color.Blue), [], 0.0, False)
 
+    def __repr__(self):
+        return f"Transition(obs={self.obs}, action={self.action}, valid_actions=[... {len(self.valid_actions)} ...], " \
+               f"reward={self.reward}, done={self.done})"
+
 
 class Episode(NamedTuple):
     transitions: List[Transition]

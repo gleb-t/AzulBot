@@ -65,6 +65,9 @@ class AzulQNetAgent(AzulAgent):
     def handle_game_start(self):
         self.history = []
 
+    def handle_game_end(self, obs: AzulObs):
+        self.history.append(Transition(obs, Move.empty(), [], reward=0.0, done=True))
+
     def _get_last_n_observations(self, n: int) -> List[AzulObs]:
         len_ = len(self.history)
         # Grab the last n observations.
@@ -80,9 +83,4 @@ class AzulRandomAgent(AzulAgent):
     def choose_action(self, obs: AzulObs, valid_actions: List[Move]) -> Move:
         return random.choice(valid_actions)
 
-    def set_last_reward(self, reward: float, is_done: bool):
-        pass
-
-    def handle_game_start(self):
-        pass
 
