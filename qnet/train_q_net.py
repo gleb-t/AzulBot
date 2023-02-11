@@ -9,6 +9,7 @@ import torch.nn.functional
 import torchsummary
 from tqdm import tqdm
 
+from lib.StageTimer import StageTimer
 from qnet.loss import q_loss
 from qnet.agent import AzulQNetAgent, e_greedy_policy_sampler_factory, greedy_policy_sampler, AzulRandomAgent
 from qnet.data_structs import Episode, DataPoint, Transition
@@ -22,8 +23,8 @@ def main():
     epoch_number = 2000
     games_per_epoch = 128
 
-    net_history_len = 1
-    net_enc_size = 64
+    net_history_len = 3
+    net_enc_size = 256
 
     train_batch_size = 128
     train_lr = 1e-3
@@ -34,14 +35,17 @@ def main():
     eval_freq_epochs = 10
     eval_games = 1024
 
-    # train_data_mode = 'fixed-data'
+    train_data_mode = 'fixed-data'
     # train_data_mode = 'replay-buffer'
-    train_data_mode = 'fresh-data'
-    fixed_data_epoch_number = 10
+    # train_data_mode = 'fresh-data'
+    fixed_data_epoch_number = 2
+
 
     # === DEBUG ===
     # games_per_epoch = 5
-    # eval_games = 10
+    eval_games = 10
+    steps_per_epoch = 32
+    epoch_number = 11
 
     # wandb_description = 'fresh-data_true-state_online_eps-sched'
     #
@@ -52,6 +56,9 @@ def main():
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     dtype = torch.float32
+
+    timer = StageTimer()
+    timer.start_stage('init')
 
     print(f"Training on device {device}")
 
@@ -69,10 +76,10 @@ def main():
     replay_buffer = []  # type: List[Episode]
 
     for i_epoch in range(epoch_number):
-
-        loss_epoch = 0.0
+        timer.start_pass()
 
         # ---------------- Collect play data. ----------------
+        timer.start_stage('play')
         episodes = []
         for i_game in range(games_per_epoch):
             winner_index = play_azul_game(agents)
@@ -95,8 +102,10 @@ def main():
             raise ValueError()
 
         # ---------------- Train the model. ----------------
+        timer.start_stage('train')
         # Enumerate the steps by their global index for convenience.
         step_index = i_epoch * steps_per_epoch
+        loss_epoch = 0.0
         for i_step in tqdm(range(step_index, step_index + steps_per_epoch), desc=f"Epoch {i_epoch}"):
 
             # --- Sample the train transitions with history.
@@ -156,7 +165,8 @@ def main():
         # wandb.log(step=step_index, data={"eps": eps})
 
         # --- Winrate evaluation.
-        if i_epoch % eval_freq_epochs == 0:
+        if i_epoch % eval_freq_epochs == 0 and i_epoch > 0:
+            timer.start_stage('eval')
             win_count = 0
             for i_game in tqdm(range(eval_games), desc=f"Eval epoch {i_epoch}"):
                 winner_index = play_azul_game([q_agent_eval, agents[1]])
@@ -178,8 +188,13 @@ def main():
             # # --- Sync game renders to WANDB.
             # if i_epoch % 100 == 0:
             #     wandb.save("games/*")
+        timer.end_pass()
 
         print(f"Epoch {i_epoch}  Loss: {loss_epoch}")
+        print(timer.get_pass_report())
+
+    timer.end()
+    print(timer.get_total_report())
 
 
 if __name__ == '__main__':
