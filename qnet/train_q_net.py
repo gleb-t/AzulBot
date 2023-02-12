@@ -19,6 +19,8 @@ from qnet.play import play_azul_game
 
 def main():
 
+    seed = 42
+
     steps_per_epoch = 32
     epoch_number = 2000
     games_per_epoch = 128
@@ -57,6 +59,10 @@ def main():
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     dtype = torch.float32
 
+    random.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
     timer = StageTimer()
     timer.start_stage('init')
 
@@ -81,7 +87,7 @@ def main():
         # ---------------- Collect play data. ----------------
         timer.start_stage('play')
         episodes = []
-        for i_game in range(games_per_epoch):
+        for i_game in tqdm(range(games_per_epoch), desc=f"Epoch {i_epoch}: Playing"):
             winner_index = play_azul_game(agents)
 
             # We only train on the first player's perspective for now.
@@ -106,7 +112,7 @@ def main():
         # Enumerate the steps by their global index for convenience.
         step_index = i_epoch * steps_per_epoch
         loss_epoch = 0.0
-        for i_step in tqdm(range(step_index, step_index + steps_per_epoch), desc=f"Epoch {i_epoch}"):
+        for i_step in tqdm(range(step_index, step_index + steps_per_epoch), desc=f"Epoch {i_epoch}: Training"):
 
             # --- Sample the train transitions with history.
             data_raw = []
@@ -168,7 +174,7 @@ def main():
         if i_epoch % eval_freq_epochs == 0 and i_epoch > 0:
             timer.start_stage('eval')
             win_count = 0
-            for i_game in tqdm(range(eval_games), desc=f"Eval epoch {i_epoch}"):
+            for i_game in tqdm(range(eval_games), desc=f"Epoch {i_epoch}: Evaluating"):
                 winner_index = play_azul_game([q_agent_eval, agents[1]])
                 if winner_index == 0:
                     win_count += 1

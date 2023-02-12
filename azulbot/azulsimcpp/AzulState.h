@@ -56,6 +56,10 @@ struct PlayerState
 
 struct Move
 {
+    static constexpr uint32_t MoveSourceNumber = Azul::BinNumber + 1;  // Plus one, because the pool is also a source.
+    static constexpr uint32_t MoveTargetNumber = Azul::WallSize + 1;   // Plus one, because the floor is also a target.
+    static constexpr uint32_t PossibleMoveNumber = MoveSourceNumber * MoveTargetNumber * Azul::ColorNumber;
+
     uint8_t sourceBin{ 0 };
     Color color{ Color::Empty };
     uint8_t targetQueue{ 0 };
@@ -68,6 +72,8 @@ struct Move
         return sourceBin == other.sourceBin && color == other.color && targetQueue == other.targetQueue;
     }
 
+    uint32_t to_int() const;
+    static Move from_int(uint32_t value);
 };
 
 

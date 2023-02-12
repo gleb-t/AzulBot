@@ -25,9 +25,16 @@ PYBIND11_MODULE(azulcpp, m)
 
     py::class_<Move>(m, "Move")
         .def(py::init<uint8_t, Color, uint8_t>())
+        
+        .def_readonly_static("MoveSourceNumber", &Move::MoveSourceNumber)
+        .def_readonly_static("MoveTargetNumber", &Move::MoveTargetNumber)
+        .def_readonly_static("PossibleMoveNumber", &Move::PossibleMoveNumber)
+        .def_static("from_int", &Move::from_int)
+
         .def_readwrite("sourceBin", &Move::sourceBin)
         .def_readwrite("color", &Move::color)
         .def_readwrite("targetQueue", &Move::targetQueue)
+        .def("to_int", &Move::to_int)
         .def("__repr__", [](const Move& m) 
         {
             return "<Move '" + std::to_string(m.sourceBin) + " " +
