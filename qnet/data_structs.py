@@ -18,9 +18,15 @@ class AzulObs(AzulState):
     def __init__(self, state: AzulState, player_index):
         super().__init__()
 
-        self.bag = copy.deepcopy(state.bag)
-        self.bins = copy.deepcopy(state.bins)
-        self.players = copy.deepcopy(state.players)
+        # self.bag = copy.deepcopy(state.bag)
+        # self.bins = copy.deepcopy(state.bins)
+        # self.players = copy.deepcopy(state.players)
+
+        # # We make a strong assumption that the observation is read-only.
+        # # Doing a deep copy is too expensive.
+        self.bag = state.bag
+        self.bins = state.bins
+        self.players = state.players
 
         if player_index != 0:
             assert player_index == 1
