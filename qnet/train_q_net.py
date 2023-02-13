@@ -18,41 +18,49 @@ from qnet.model import AzulQNet
 from qnet.play import play_n_games_async
 
 
+class Config:
+    
+    def __init__(self):
+        self.seed = 42
+
+        self.steps_per_epoch = 32
+        self.epoch_number = 2000
+        self.games_per_epoch = 128
+
+        self.agent_batch_size = 64
+
+        self.net_history_len = 3
+        self.net_enc_size = 256
+
+        self.train_batch_size = 128
+        self.train_lr = 1e-3
+        self.train_weight_sense = 1.0
+        self.train_eps_max = 0.8
+        self.train_eps_min = 0.1
+
+        self.eval_freq_epochs = 10
+        self.eval_games = 1024
+
+        # self.train_data_mode = 'replay-buffer'
+        self.train_data_mode = 'fresh-data'
+
+        # self.train_data_mode = 'fixed-data'
+        self.fixed_data_epoch_number = 2
+
+        self.wandb_description = 'first'
+
+
 def main():
 
-    seed = 42
-
-    steps_per_epoch = 32
-    epoch_number = 2000
-    games_per_epoch = 128
-
-    agent_batch_size = 64
-
-    net_history_len = 3
-    net_enc_size = 256
-
-    train_batch_size = 128
-    train_lr = 1e-3
-    train_weight_sense = 1.0
-    train_eps_max = 0.8
-    train_eps_min = 0.1
-
-    eval_freq_epochs = 10
-    eval_games = 1024
-
-    train_data_mode = 'fixed-data'
-    # train_data_mode = 'replay-buffer'
-    # train_data_mode = 'fresh-data'
-    fixed_data_epoch_number = 2
-
+    config = Config()
 
     # === DEBUG ===
-    # games_per_epoch = 5
-    # eval_games = 10
-    # steps_per_epoch = 32
-    # epoch_number = 11
+    # config.games_per_epoch = 5
+    # config.eval_games = 10
+    # config.steps_per_epoch = 32
+    # config.epoch_number = 11
 
-    # wandb_description = 'fresh-data_true-state_online_eps-sched'
+    # config.wandb_description = 'fresh-data_true-state_online_eps-sched'
     #
     # wandb.init(project="recon_tictactoe", entity="not-working-solutions", )
     # wandb.run.name = wandb.run.name + '-' + wandb_description if wandb.run.name else wandb_description  # Can be 'None'.
@@ -62,55 +70,41 @@ def main():
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     dtype = torch.float32
 
-    random.seed(seed)
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    random.seed(config.seed)
+    torch.manual_seed(config.seed)
+    np.random.seed(config.seed)
 
     timer = StageTimer()
     timer.start_stage('init')
 
     print(f"Training on device {device}")
 
-    q_net = AzulQNet(net_history_len, net_enc_size).to(device)
-    optimizer = torch.optim.Adam(q_net.parameters(), lr=train_lr)
+    q_net = AzulQNet(config.net_history_len, config.net_enc_size).to(device)
+    optimizer = torch.optim.Adam(q_net.parameters(), lr=config.train_lr)
 
-    q_agent_factory = BatchedQNetAgentFactory(q_net, batch_size=agent_batch_size)
-    train_policy_sampler = e_greedy_policy_sampler_factory(train_eps_max)
+    q_agent_factory = BatchedQNetAgentFactory(q_net, batch_size=config.agent_batch_size)
+    train_policy_sampler = e_greedy_policy_sampler_factory(config.train_eps_max)
     eval_policy_sampler = greedy_policy_sampler
 
     print("Built the Q-Net.")
-    torchsummary.summary(q_net, (net_history_len, AzulQNet.ObsSize))
+    torchsummary.summary(q_net, (config.net_history_len, AzulQNet.ObsSize))
 
-    # loop = asyncio.new_event_loop()
-    # asyncio.set_event_loop(loop)
-    # start_worker_task = loop.create_task(q_agent_factory.start_worker())
     replay_buffer = []  # type: List[Episode]
-    for i_epoch in range(epoch_number):
+    for i_epoch in range(config.epoch_number):
         timer.start_pass()
 
         # ---------------- Collect play data. ----------------
         timer.start_stage('play')
-        print(f"Epoch {i_epoch}: Playing {games_per_epoch} games...")
-        winners, episodes = asyncio.run(play_n_games_async(games_per_epoch, q_agent_factory, RandomAgent(),
+        print(f"Epoch {i_epoch}: Playing {config.games_per_epoch} games...")
+        winners, episodes = asyncio.run(play_n_games_async(config.games_per_epoch, q_agent_factory, RandomAgent(),
                                                            train_policy_sampler))
 
-        # episodes = []
-        # for i_game in tqdm(range(games_per_epoch), desc=f"Epoch {i_epoch}: Playing"):
-        #     winner_index = play_azul_game(agents)
-        #
-        #     # We only train on the first player's perspective for now.
-        #     history_mine = agents[0].history
-        #     # history_opp = agents[1].history
-        #
-        #     assert history_mine[-1].done
-        #     episodes.append(Episode(history_mine))
-
-        if train_data_mode == 'replay-buffer':
+        if config.train_data_mode == 'replay-buffer':
             replay_buffer.extend(episodes)
-        elif train_data_mode == 'fresh-data':
+        elif config.train_data_mode == 'fresh-data':
             replay_buffer = episodes
-        elif train_data_mode == 'fixed-data':
-            if i_epoch < fixed_data_epoch_number:
+        elif config.train_data_mode == 'fixed-data':
+            if i_epoch < config.fixed_data_epoch_number:
                 replay_buffer.extend(episodes)
         else:
             raise ValueError()
@@ -118,20 +112,20 @@ def main():
         # ---------------- Train the model. ----------------
         timer.start_stage('train')
         # Enumerate the steps by their global index for convenience.
-        step_index = i_epoch * steps_per_epoch
+        step_index = i_epoch * config.steps_per_epoch
         loss_epoch = 0.0
-        for i_step in tqdm(range(step_index, step_index + steps_per_epoch), desc=f"Epoch {i_epoch}: Training"):
+        for i_step in tqdm(range(step_index, step_index + config.steps_per_epoch), desc=f"Epoch {i_epoch}: Training"):
 
             # --- Sample the train transitions with history.
             data_raw = []
-            for i_sample in range(train_batch_size):
+            for i_sample in range(config.train_batch_size):
                 # Sample an episode, weighted by episode length so all transitions are equally likely.
                 episode = random.choices(replay_buffer, weights=[len(e) for e in replay_buffer], k=1)[0]
 
                 # Sample a transition and extract its history. Exclude the last transition because it's empty.
                 t_now = random.randint(0, len(episode) - 2)
                 transition_history = []
-                for t in range(t_now - net_history_len + 1, t_now + 2):  # From n steps ago up to next.
+                for t in range(t_now - config.net_history_len + 1, t_now + 2):  # From n steps ago up to next.
                     if t >= 0:
                         transition_history.append(episode.transitions[t])
                     else:  # Pad the history with empty transitions.
@@ -167,22 +161,22 @@ def main():
 
             # print(f"Step: {i_step} | Loss: {loss_total.item():.2f}")
 
-        loss_epoch /= steps_per_epoch
+        loss_epoch /= config.steps_per_epoch
 
         # step_index = ((i_epoch + 1) * steps_per_epoch - 1)  # Compute the last step index.
         # wandb.log(step=step_index, data={"loss_total_epoch": loss_epoch})
 
         # --- Update the eps-policy on a schedule.
-        t = i_epoch / epoch_number
-        eps = train_eps_max * math.cos(t * math.pi / 2) + train_eps_min
+        t = i_epoch / config.epoch_number
+        eps = config.train_eps_max * math.cos(t * math.pi / 2) + config.train_eps_min
         train_policy_sampler = e_greedy_policy_sampler_factory(eps)
         # wandb.log(step=step_index, data={"eps": eps})
 
         # --- Winrate evaluation.
-        if i_epoch % eval_freq_epochs == 0 and i_epoch > 0:
+        if i_epoch % config.eval_freq_epochs == 0 and i_epoch > 0:
             timer.start_stage('eval')
             print(f"Epoch {i_epoch}: Evaluating...")
-            winners, episodes = asyncio.run(play_n_games_async(eval_games, q_agent_factory, RandomAgent(),
+            winners, episodes = asyncio.run(play_n_games_async(config.eval_games, q_agent_factory, RandomAgent(),
                                                                eval_policy_sampler))
             win_count = sum([1 if w == 0 else 0 for w in winners])
             #
@@ -191,7 +185,7 @@ def main():
             #     if winner_index == 0:
             #         win_count += 1
 
-            winrate = win_count / eval_games
+            winrate = win_count / config.eval_games
             print(f"Eval winrate: {winrate}")
             # wandb.log(step=step_index, data={"winrate": winrate})
 
@@ -210,9 +204,6 @@ def main():
 
         print(f"Epoch {i_epoch}  Loss: {loss_epoch}")
         print(timer.get_pass_report())
-
-    # loop.run_until_complete(start_worker_task)
-    # loop.run_until_complete(q_agent_factory.stop_worker())
 
     timer.end()
     print(timer.get_total_report())
