@@ -1,16 +1,18 @@
+import asyncio
 from abc import ABCMeta, abstractmethod
 from typing import *
+from typing import Tuple, List
 
 from azulbot.azulsim import Azul, AzulState, Move
-from qnet.data_structs import AzulObs
-
+from qnet.agent import BatchedQNetAgentFactory, TPolicySampler
+from qnet.data_structs import AzulObs, Episode
 
 MaxRoundsTimeout = 20
 
 
 class AzulAgent(metaclass=ABCMeta):
     @abstractmethod
-    def choose_action(self, obs: AzulObs, valid_actions: List[Move]) -> Move:
+    async def choose_action(self, obs: AzulObs, valid_actions: List[Move]) -> Move:
         ...
 
     def set_last_reward(self, reward: float, is_done: bool):
@@ -23,7 +25,7 @@ class AzulAgent(metaclass=ABCMeta):
         pass
 
 
-def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, use_score_as_reward: bool = True) -> int:
+async def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, use_score_as_reward: bool = True) -> int:
     assert len(players) == 2
     assert use_score_as_reward
 
@@ -43,7 +45,7 @@ def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, 
             obs = AzulObs(state, state.nextPlayer)
             valid_actions = azul.enumerate_moves(state)
 
-            move = players[state.nextPlayer].choose_action(obs, valid_actions)
+            move = await players[state.nextPlayer].choose_action(obs, valid_actions)
             state = azul.apply_move_without_scoring(state, move).state
 
         # Score the round and prepare to update the reward.
@@ -70,3 +72,33 @@ def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, 
     winner_index = 1 if state.players[1].score > state.players[0].score else 0  # Favor player #1 in ties.
 
     return winner_index
+
+
+async def play_n_games_async(n_games: int, agent_factory: BatchedQNetAgentFactory, opponent: AzulAgent,
+                             policy_sampler: TPolicySampler) -> Tuple[List[int], List[Episode]]:
+    """
+    Play N games utilizing a batched Q-net agent that uses asyncio to batch calls to the Q-net.
+    """
+
+    # Start the worker coroutine which will execute q-net calls.
+    await agent_factory.start_worker()
+
+    # Schedule N games with N agents.
+    game_tasks = []
+    agents = []
+    for i_game in range(n_games):
+        agent = agent_factory.build_agent(policy_sampler)
+        agents.append(agent)
+
+        players = [agent, opponent]
+        game_tasks.append(asyncio.create_task(play_azul_game(players)))
+
+    # Wait for all games to finish.
+    winner_indices = list(await asyncio.gather(*game_tasks))  # type: List[int]
+    # Stop the worker coroutine.
+    await agent_factory.stop_worker()
+
+    # Collect the history.
+    episodes = [Episode(agent.history) for agent in agents]
+
+    return winner_indices, episodes

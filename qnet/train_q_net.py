@@ -1,4 +1,4 @@
-import os
+import asyncio
 import math
 import random
 from typing import *
@@ -10,11 +10,12 @@ import torchsummary
 from tqdm import tqdm
 
 from lib.StageTimer import StageTimer
-from qnet.loss import q_loss
-from qnet.agent import QNetAgent, e_greedy_policy_sampler_factory, greedy_policy_sampler, RandomAgent
+from qnet.agent import e_greedy_policy_sampler_factory, greedy_policy_sampler, RandomAgent, \
+    BatchedQNetAgentFactory
 from qnet.data_structs import Episode, DataPoint, Transition
+from qnet.loss import q_loss
 from qnet.model import AzulQNet
-from qnet.play import play_azul_game
+from qnet.play import play_n_games_async
 
 
 def main():
@@ -24,6 +25,8 @@ def main():
     steps_per_epoch = 32
     epoch_number = 2000
     games_per_epoch = 128
+
+    agent_batch_size = 64
 
     net_history_len = 3
     net_enc_size = 256
@@ -45,9 +48,9 @@ def main():
 
     # === DEBUG ===
     # games_per_epoch = 5
-    eval_games = 10
-    steps_per_epoch = 32
-    epoch_number = 11
+    # eval_games = 10
+    # steps_per_epoch = 32
+    # epoch_number = 11
 
     # wandb_description = 'fresh-data_true-state_online_eps-sched'
     #
@@ -71,31 +74,36 @@ def main():
     q_net = AzulQNet(net_history_len, net_enc_size).to(device)
     optimizer = torch.optim.Adam(q_net.parameters(), lr=train_lr)
 
-    # Train on random agent data.
-    q_agent_train = QNetAgent(q_net, policy_sampler=e_greedy_policy_sampler_factory(train_eps_max))
-    q_agent_eval = QNetAgent(q_net, policy_sampler=greedy_policy_sampler)
-    agents = [q_agent_train, RandomAgent()]
+    q_agent_factory = BatchedQNetAgentFactory(q_net, batch_size=agent_batch_size)
+    train_policy_sampler = e_greedy_policy_sampler_factory(train_eps_max)
+    eval_policy_sampler = greedy_policy_sampler
 
     print("Built the Q-Net.")
     torchsummary.summary(q_net, (net_history_len, AzulQNet.ObsSize))
 
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
+    # start_worker_task = loop.create_task(q_agent_factory.start_worker())
     replay_buffer = []  # type: List[Episode]
-
     for i_epoch in range(epoch_number):
         timer.start_pass()
 
         # ---------------- Collect play data. ----------------
         timer.start_stage('play')
-        episodes = []
-        for i_game in tqdm(range(games_per_epoch), desc=f"Epoch {i_epoch}: Playing"):
-            winner_index = play_azul_game(agents)
+        print(f"Epoch {i_epoch}: Playing {games_per_epoch} games...")
+        winners, episodes = asyncio.run(play_n_games_async(games_per_epoch, q_agent_factory, RandomAgent(),
+                                                           train_policy_sampler))
 
-            # We only train on the first player's perspective for now.
-            history_mine = agents[0].history
-            # history_opp = agents[1].history
-
-            assert history_mine[-1].done
-            episodes.append(Episode(history_mine))
+        # episodes = []
+        # for i_game in tqdm(range(games_per_epoch), desc=f"Epoch {i_epoch}: Playing"):
+        #     winner_index = play_azul_game(agents)
+        #
+        #     # We only train on the first player's perspective for now.
+        #     history_mine = agents[0].history
+        #     # history_opp = agents[1].history
+        #
+        #     assert history_mine[-1].done
+        #     episodes.append(Episode(history_mine))
 
         if train_data_mode == 'replay-buffer':
             replay_buffer.extend(episodes)
@@ -167,17 +175,21 @@ def main():
         # --- Update the eps-policy on a schedule.
         t = i_epoch / epoch_number
         eps = train_eps_max * math.cos(t * math.pi / 2) + train_eps_min
-        q_agent_train.policy_sampler = e_greedy_policy_sampler_factory(eps)
+        train_policy_sampler = e_greedy_policy_sampler_factory(eps)
         # wandb.log(step=step_index, data={"eps": eps})
 
         # --- Winrate evaluation.
         if i_epoch % eval_freq_epochs == 0 and i_epoch > 0:
             timer.start_stage('eval')
-            win_count = 0
-            for i_game in tqdm(range(eval_games), desc=f"Epoch {i_epoch}: Evaluating"):
-                winner_index = play_azul_game([q_agent_eval, agents[1]])
-                if winner_index == 0:
-                    win_count += 1
+            print(f"Epoch {i_epoch}: Evaluating...")
+            winners, episodes = asyncio.run(play_n_games_async(eval_games, q_agent_factory, RandomAgent(),
+                                                               eval_policy_sampler))
+            win_count = sum([1 if w == 0 else 0 for w in winners])
+            #
+            # for i_game in tqdm(range(eval_games), desc=f"Epoch {i_epoch}: Evaluating"):
+            #     winner_index = play_azul_game([q_agent_eval, agents[1]])
+            #     if winner_index == 0:
+            #         win_count += 1
 
             winrate = win_count / eval_games
             print(f"Eval winrate: {winrate}")
@@ -198,6 +210,9 @@ def main():
 
         print(f"Epoch {i_epoch}  Loss: {loss_epoch}")
         print(timer.get_pass_report())
+
+    # loop.run_until_complete(start_worker_task)
+    # loop.run_until_complete(q_agent_factory.stop_worker())
 
     timer.end()
     print(timer.get_total_report())
