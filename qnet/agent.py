@@ -32,7 +32,7 @@ def e_greedy_policy_sampler_factory(eps: float):
     return e_greedy_policy
 
 
-class AzulQNetAgent(AzulAgent):
+class QNetAgent(AzulAgent):
 
     def __init__(self, q_net: AzulQNet, policy_sampler: Optional[Callable] = None):
         self.azul = Azul()
@@ -78,7 +78,7 @@ class AzulQNetAgent(AzulAgent):
         return result
 
 
-class AzulRandomAgent(AzulAgent):
+class RandomAgent(AzulAgent):
 
     def choose_action(self, obs: AzulObs, valid_actions: List[Move]) -> Move:
         return random.choice(valid_actions)

@@ -12,11 +12,21 @@ class Color(IntEnum):
 
 
 class Move:
+    MoveSourceNumber: int
+    MoveTargetNumber: int
+    PossibleMoveNumber: int
+
     sourceBin: int
     color: Color
     targetQueue: int
 
     def __init__(self, sourceBin: int, color: Color, targetQueue: int): ...
+
+    def to_int(self) -> int: ...
+
+    @classmethod
+    def from_int(cls, value) -> 'Move': ...
+
 
 
 class PlayerState:

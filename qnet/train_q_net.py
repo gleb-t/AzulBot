@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from lib.StageTimer import StageTimer
 from qnet.loss import q_loss
-from qnet.agent import AzulQNetAgent, e_greedy_policy_sampler_factory, greedy_policy_sampler, AzulRandomAgent
+from qnet.agent import QNetAgent, e_greedy_policy_sampler_factory, greedy_policy_sampler, RandomAgent
 from qnet.data_structs import Episode, DataPoint, Transition
 from qnet.model import AzulQNet
 from qnet.play import play_azul_game
@@ -72,9 +72,9 @@ def main():
     optimizer = torch.optim.Adam(q_net.parameters(), lr=train_lr)
 
     # Train on random agent data.
-    q_agent_train = AzulQNetAgent(q_net, policy_sampler=e_greedy_policy_sampler_factory(train_eps_max))
-    q_agent_eval = AzulQNetAgent(q_net, policy_sampler=greedy_policy_sampler)
-    agents = [q_agent_train, AzulRandomAgent()]
+    q_agent_train = QNetAgent(q_net, policy_sampler=e_greedy_policy_sampler_factory(train_eps_max))
+    q_agent_eval = QNetAgent(q_net, policy_sampler=greedy_policy_sampler)
+    agents = [q_agent_train, RandomAgent()]
 
     print("Built the Q-Net.")
     torchsummary.summary(q_net, (net_history_len, AzulQNet.ObsSize))
