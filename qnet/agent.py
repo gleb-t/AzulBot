@@ -1,15 +1,16 @@
 import asyncio
 import operator
 import random
+from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from typing import *
+from typing import List
 
 import torch.nn
 
 from azulbot.azulsim import Move, Azul
 from qnet.data_structs import Transition, AzulObs
 from qnet.model import AzulQNet
-from qnet.play import AzulAgent
 
 TPolicySampler = Callable[[torch.Tensor, List[int]], int]
 TQNetCall = Callable[[torch.Tensor], Awaitable[torch.Tensor]]
@@ -35,6 +36,21 @@ def e_greedy_policy_sampler_factory(eps: float):
         return max(q_vals_valid, key=operator.itemgetter(1))[0]
 
     return e_greedy_policy
+
+
+class AzulAgent(metaclass=ABCMeta):
+    @abstractmethod
+    async def choose_action(self, obs: AzulObs, valid_actions: List[Move]) -> Move:
+        ...
+
+    def set_last_reward(self, reward: float, is_done: bool):
+        pass
+
+    def handle_game_start(self):
+        pass
+
+    def handle_game_end(self, obs: AzulObs):
+        pass
 
 
 class BatchedQNetAgentFactory:

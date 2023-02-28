@@ -1,28 +1,12 @@
 import asyncio
-from abc import ABCMeta, abstractmethod
 from typing import *
 from typing import Tuple, List
 
-from azulbot.azulsim import Azul, AzulState, Move
-from qnet.agent import BatchedQNetAgentFactory, TPolicySampler
+from azulbot.azulsim import Azul, AzulState
+from qnet.agent import BatchedQNetAgentFactory, TPolicySampler, AzulAgent
 from qnet.data_structs import AzulObs, Episode
 
 MaxRoundsTimeout = 20
-
-
-class AzulAgent(metaclass=ABCMeta):
-    @abstractmethod
-    async def choose_action(self, obs: AzulObs, valid_actions: List[Move]) -> Move:
-        ...
-
-    def set_last_reward(self, reward: float, is_done: bool):
-        pass
-
-    def handle_game_start(self):
-        pass
-
-    def handle_game_end(self, obs: AzulObs):
-        pass
 
 
 async def play_azul_game(players: List[AzulAgent], state: Optional[AzulState] = None, use_score_as_reward: bool = True) -> int:

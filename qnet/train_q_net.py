@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional
 import torchsummary
+import wandb
 from tqdm import tqdm
 
 from lib.StageTimer import StageTimer
@@ -59,11 +60,10 @@ def main():
     # config.eval_games = 10
     # config.steps_per_epoch = 32
     # config.epoch_number = 11
-
     # config.wandb_description = 'fresh-data_true-state_online_eps-sched'
-    #
-    # wandb.init(project="recon_tictactoe", entity="not-working-solutions", )
-    # wandb.run.name = wandb.run.name + '-' + wandb_description if wandb.run.name else wandb_description  # Can be 'None'.
+
+    wandb.init(project="azulbot", config=config.__dict__)
+    wandb.run.name = wandb.run.name + '-' + config.wandb_description if wandb.run.name else config.wandb_description
 
     # plotting_dir = os.path.abspath(os.path.join(wandb.run.dir, "games"))
 
@@ -153,18 +153,17 @@ def main():
 
             loss_epoch += loss_total.item()
 
-            # wandb.log(step=i_step, data={
-            #     "loss_total_step": loss_total.item(),
-            #     "loss_move_step": loss_move.item(),
-            #     "loss_sense_step": loss_sense.item(),
-            # })
+            wandb.log(step=i_step, data={
+                "loss_step": loss_total.item(),
+            })
 
             # print(f"Step: {i_step} | Loss: {loss_total.item():.2f}")
 
         loss_epoch /= config.steps_per_epoch
+        print(f"Epoch {i_epoch}  Loss: {loss_epoch}")
 
-        # step_index = ((i_epoch + 1) * steps_per_epoch - 1)  # Compute the last step index.
-        # wandb.log(step=step_index, data={"loss_total_epoch": loss_epoch})
+        step_index = ((i_epoch + 1) * config.steps_per_epoch - 1)  # Compute the last step index.
+        wandb.log(step=step_index, data={"loss_epoch": loss_epoch})
 
         # --- Update the eps-policy on a schedule.
         t = i_epoch / config.epoch_number
@@ -179,30 +178,13 @@ def main():
             winners, episodes = asyncio.run(play_n_games_async(config.eval_games, q_agent_factory, RandomAgent(),
                                                                eval_policy_sampler))
             win_count = sum([1 if w == 0 else 0 for w in winners])
-            #
-            # for i_game in tqdm(range(eval_games), desc=f"Epoch {i_epoch}: Evaluating"):
-            #     winner_index = play_azul_game([q_agent_eval, agents[1]])
-            #     if winner_index == 0:
-            #         win_count += 1
 
             winrate = win_count / config.eval_games
             print(f"Eval winrate: {winrate}")
-            # wandb.log(step=step_index, data={"winrate": winrate})
+            wandb.log(step=step_index, data={"winrate": winrate})
 
-            # # Enter the plotting context
-            # with plotting_mode():
-            #     # Set plotting directories for player and opponent (they'll be created if non-existant)
-            #     q_agent_eval.plot_directory = os.path.join(plotting_dir, f"player_{i_epoch}")
-            #     agents[1].plot_directory = os.path.join(plotting_dir, f"opponent_{i_epoch}")
-            #
-            #     play_local_game(q_agent_eval, agents[1], TicTacToe())
-            #
-            # # --- Sync game renders to WANDB.
-            # if i_epoch % 100 == 0:
-            #     wandb.save("games/*")
         timer.end_pass()
 
-        print(f"Epoch {i_epoch}  Loss: {loss_epoch}")
         print(timer.get_pass_report())
 
     timer.end()
